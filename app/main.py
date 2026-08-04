@@ -1,4 +1,4 @@
-"""CLOSER AI 서버.
+"""CLOSR AI 서버.
 
 백엔드(Spring Boot)가 HTTP로 호출하는 별도 서버입니다.
 Java 에서 Python 파이프라인을 직접 호출할 수 없어 분리했습니다.
@@ -14,8 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.exceptions import (
-    CloserException,
-    closer_exception_handler,
+    ClosrException,
+    closr_exception_handler,
     unhandled_exception_handler,
 )
 from app.core.response import ApiResponse
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 
     요청마다 SMPL-X(약 830MB)를 다시 읽으면 응답이 수 배 느려집니다.
     """
-    logger.info("CLOSER AI 서버를 시작합니다")
+    logger.info("CLOSR AI 서버를 시작합니다")
 
     if not settings.smplx_model_path.exists():
         logger.warning(
@@ -49,11 +49,11 @@ async def lifespan(app: FastAPI):
 
     # TODO: app.state.body = Body()  — SMPL-X 모델 로드
     yield
-    logger.info("CLOSER AI 서버를 종료합니다")
+    logger.info("CLOSR AI 서버를 종료합니다")
 
 
 app = FastAPI(
-    title="CLOSER AI",
+    title="CLOSR AI",
     description="사진 1장으로 3D 아바타를 생성하고 의류 사이즈를 추천합니다",
     version="0.1.0",
     docs_url="/docs",
@@ -68,7 +68,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_exception_handler(CloserException, closer_exception_handler)
+app.add_exception_handler(ClosrException, closr_exception_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
 app.include_router(avatar.router)

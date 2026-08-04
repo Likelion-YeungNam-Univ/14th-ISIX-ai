@@ -37,13 +37,13 @@ class ErrorCode(Enum):
         self.message = message
 
 
-class CloserException(Exception):
+class ClosrException(Exception):
     def __init__(self, error_code: ErrorCode) -> None:
         self.error_code = error_code
         super().__init__(error_code.message)
 
 
-async def closer_exception_handler(_: Request, exc: CloserException) -> JSONResponse:
+async def closr_exception_handler(_: Request, exc: ClosrException) -> JSONResponse:
     return JSONResponse(
         status_code=exc.error_code.status_code,
         content=ApiResponse.fail(

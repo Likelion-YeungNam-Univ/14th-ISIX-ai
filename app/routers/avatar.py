@@ -24,7 +24,7 @@ import uuid
 from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile, status
 
 from app.core.config import settings
-from app.core.exceptions import CloserException, ErrorCode
+from app.core.exceptions import ClosrException, ErrorCode
 from app.core.response import ApiResponse
 from app.models.avatar import (
     AvatarJobResponse,
@@ -62,7 +62,7 @@ def _run_pipeline(avatar_id: str, photo_bytes: bytes, height: int, weight: int) 
         avatar_id=avatar_id,
         status=AvatarStatus.DONE,
         result=AvatarResult(
-            glb_url=f"https://cdn.closer.xxx/avatars/{avatar_id}.glb",
+            glb_url=f"https://cdn.closr.xxx/avatars/{avatar_id}.glb",
             body_bucket="H1B1",
             measurements={
                 "shoulder_width": 40.1,
@@ -104,11 +104,11 @@ async def generate_avatar(
     체형 파라미터 추출 후 메모리에서 즉시 폐기합니다.
     """
     if photo.content_type not in ALLOWED_CONTENT_TYPES:
-        raise CloserException(ErrorCode.UNSUPPORTED_FORMAT)
+        raise ClosrException(ErrorCode.UNSUPPORTED_FORMAT)
 
     contents = await photo.read()
     if len(contents) > settings.max_upload_bytes:
-        raise CloserException(ErrorCode.FILE_TOO_LARGE)
+        raise ClosrException(ErrorCode.FILE_TOO_LARGE)
 
     avatar_id = f"av_{uuid.uuid4().hex[:12]}"
     _JOBS[avatar_id] = AvatarStatusResponse(
@@ -128,5 +128,5 @@ async def get_avatar(avatar_id: str) -> ApiResponse[AvatarStatusResponse]:
     """
     job = _JOBS.get(avatar_id)
     if job is None:
-        raise CloserException(ErrorCode.AVATAR_NOT_FOUND)
+        raise ClosrException(ErrorCode.AVATAR_NOT_FOUND)
     return ApiResponse.ok(job)

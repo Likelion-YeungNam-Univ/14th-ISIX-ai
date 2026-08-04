@@ -262,7 +262,7 @@ GET /api/avatar/{avatar_id}
     "avatar_id": "av_7f3a9c21b4d0",
     "status": "done",
     "result": {
-      "glb_url": "https://cdn.closer.xxx/avatars/av_7f3a9c21b4d0.glb",
+      "glb_url": "https://cdn.closr.xxx/avatars/av_7f3a9c21b4d0.glb",
       "body_bucket": "H1B1",
       "measurements": { "shoulder_width": 40.1, "chest_circ": 87.2 },
       "confidence": 0.771,

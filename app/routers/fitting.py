@@ -33,7 +33,7 @@ async def get_fitting(
     #      없으면 FITTING_NOT_AVAILABLE (배치 실패율 약 28%)
     #   3. 여유량 JSON 을 읽어 판정 결과 생성
     stub = FittingResponse(
-        glb_url="https://cdn.closer.xxx/draped/shirt_M__H1B2.glb",
+        glb_url="https://cdn.closr.xxx/draped/shirt_M__H1B2.glb",
         fit_report=[
             {"part": "shoulder_width", "label": "어깨", "ease": -2.1,
              "verdict": "tight", "color": "#C0392B"},
