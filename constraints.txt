@@ -1,0 +1,6 @@
+# 버전 충돌 이력이 있어 고정합니다.
+# numpy 2.x 로 올라가면 mediapipe 가 동작하지 않습니다.
+# 설치 시 반드시 -c constraints.txt 를 지정하세요.
+numpy==1.26.4
+mediapipe==0.10.21
+opencv-python==4.11.0.86

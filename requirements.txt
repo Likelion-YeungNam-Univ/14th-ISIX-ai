@@ -1,0 +1,13 @@
+fastapi==0.115.0
+uvicorn[standard]==0.31.0
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-multipart==0.0.12
+
+numpy==1.26.4
+scipy==1.13.1
+opencv-python==4.11.0.86
+mediapipe==0.10.21
+trimesh==4.12.2
+smplx==0.1.28
+torch==2.8.0

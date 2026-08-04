@@ -1,0 +1,30 @@
+# 환경
+.env
+.env.local
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# SMPL-X — 재배포 금지 라이선스
+assets/models/
+*.npz
+*.pkl
+
+# 개인 사진 · 검증 데이터
+photo.jpg
+photos/
+validation/
+
+# 대용량 산출물
+assets/draped/
+assets/grid/
+*.glb
+*.obj
+out/
+
+# IDE · OS
+.idea/
+.vscode/
+.DS_Store
