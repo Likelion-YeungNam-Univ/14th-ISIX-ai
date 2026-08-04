@@ -136,6 +136,8 @@ HTTP로 통신하는 별도 서버로 분리했습니다.
 
 ### 1. 가상환경
 
+**Python 3.9 이상**이면 됩니다. (3.9.6 에서 기동 확인)
+
 ```bash
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate

@@ -3,7 +3,7 @@
 백엔드(Spring Boot)와 동일한 봉투 구조를 사용합니다.
 """
 
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 from pydantic import BaseModel
 
@@ -17,8 +17,8 @@ class ErrorBody(BaseModel):
 
 class ApiResponse(BaseModel, Generic[T]):
     success: bool = True
-    data: T | None = None
-    error: ErrorBody | None = None
+    data: Optional[T] = None
+    error: Optional[ErrorBody] = None
 
     @classmethod
     def ok(cls, data: Any = None) -> "ApiResponse":

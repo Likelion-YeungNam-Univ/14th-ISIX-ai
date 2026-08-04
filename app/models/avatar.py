@@ -10,6 +10,7 @@ POST 로 작업을 등록해 avatar_id 를 받고, GET 으로 완료 여부를 �
 """
 
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -79,5 +80,9 @@ class AvatarStatusResponse(BaseModel):
 
     avatar_id: str
     status: AvatarStatus
-    result: AvatarResult | None = Field(None, description="status=done 일 때만 존재")
-    error_message: str | None = Field(None, description="status=failed 일 때만 존재")
+    result: Optional[AvatarResult] = Field(
+        None, description="status=done 일 때만 존재"
+    )
+    error_message: Optional[str] = Field(
+        None, description="status=failed 일 때만 존재"
+    )
