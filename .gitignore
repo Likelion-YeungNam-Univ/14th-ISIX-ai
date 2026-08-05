@@ -20,6 +20,8 @@ validation/
 # 대용량 산출물
 assets/draped/
 assets/grid/
+assets/avatars/
+assets/debug/
 *.glb
 *.obj
 out/
