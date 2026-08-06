@@ -1,0 +1,236 @@
+{
+  "tshirt_basic_s": {
+    "design": "tshirt_basic",
+    "size": "S",
+    "fit": "레귤러",
+    "garment_cm": {
+      "bust": 99.0,
+      "shoulder": 35.0
+    },
+    "ref_ease_cm": {
+      "bust": 14.0,
+      "shoulder": -2.0
+    }
+  },
+  "shirt_slim_s": {
+    "design": "shirt_slim",
+    "size": "S",
+    "fit": "슬림",
+    "garment_cm": {
+      "bust": 93.0,
+      "shoulder": 35.0
+    },
+    "ref_ease_cm": {
+      "bust": 8.0,
+      "shoulder": -2.0
+    }
+  },
+  "shirt_over_s": {
+    "design": "shirt_over",
+    "size": "S",
+    "fit": "오버핏",
+    "garment_cm": {
+      "bust": 115.0,
+      "shoulder": 35.0
+    },
+    "ref_ease_cm": {
+      "bust": 30.0,
+      "shoulder": -2.0
+    }
+  },
+  "dress_basic_s": {
+    "design": "dress_basic",
+    "size": "S",
+    "fit": "레귤러",
+    "garment_cm": {
+      "bust": 99.0,
+      "hips": 97.0,
+      "shoulder": 35.0
+    },
+    "ref_ease_cm": {
+      "bust": 14.0,
+      "hips": 6.0,
+      "shoulder": -2.0
+    }
+  },
+  "pants_slacks_s": {
+    "design": "pants_slacks",
+    "size": "S",
+    "fit": "레귤러",
+    "garment_cm": {
+      "waist": 71.5
+    },
+    "ref_ease_cm": {
+      "waist": 2.5
+    }
+  },
+  "skirt_pencil_s": {
+    "design": "skirt_pencil",
+    "size": "S",
+    "fit": "레귤러",
+    "garment_cm": {
+      "waist": 71.0,
+      "hips": 97.0
+    },
+    "ref_ease_cm": {
+      "waist": 2.0,
+      "hips": 6.0
+    }
+  },
+  "tshirt_basic_m": {
+    "design": "tshirt_basic",
+    "size": "M",
+    "fit": "레귤러",
+    "garment_cm": {
+      "bust": 108.0,
+      "shoulder": 37.0
+    },
+    "ref_ease_cm": {
+      "bust": 14.0,
+      "shoulder": -2.0
+    }
+  },
+  "shirt_slim_m": {
+    "design": "shirt_slim",
+    "size": "M",
+    "fit": "슬림",
+    "garment_cm": {
+      "bust": 102.0,
+      "shoulder": 37.0
+    },
+    "ref_ease_cm": {
+      "bust": 8.0,
+      "shoulder": -2.0
+    }
+  },
+  "shirt_over_m": {
+    "design": "shirt_over",
+    "size": "M",
+    "fit": "오버핏",
+    "garment_cm": {
+      "bust": 124.0,
+      "shoulder": 37.0
+    },
+    "ref_ease_cm": {
+      "bust": 30.0,
+      "shoulder": -2.0
+    }
+  },
+  "dress_basic_m": {
+    "design": "dress_basic",
+    "size": "M",
+    "fit": "레귤러",
+    "garment_cm": {
+      "bust": 108.0,
+      "hips": 106.0,
+      "shoulder": 37.0
+    },
+    "ref_ease_cm": {
+      "bust": 14.0,
+      "hips": 6.0,
+      "shoulder": -2.0
+    }
+  },
+  "pants_slacks_m": {
+    "design": "pants_slacks",
+    "size": "M",
+    "fit": "레귤러",
+    "garment_cm": {
+      "waist": 80.1
+    },
+    "ref_ease_cm": {
+      "waist": 2.1
+    }
+  },
+  "skirt_pencil_m": {
+    "design": "skirt_pencil",
+    "size": "M",
+    "fit": "레귤러",
+    "garment_cm": {
+      "waist": 80.0,
+      "hips": 106.0
+    },
+    "ref_ease_cm": {
+      "waist": 2.0,
+      "hips": 6.0
+    }
+  },
+  "tshirt_basic_l": {
+    "design": "tshirt_basic",
+    "size": "L",
+    "fit": "레귤러",
+    "garment_cm": {
+      "bust": 114.0,
+      "shoulder": 38.7
+    },
+    "ref_ease_cm": {
+      "bust": 14.0,
+      "shoulder": -1.8
+    }
+  },
+  "shirt_slim_l": {
+    "design": "shirt_slim",
+    "size": "L",
+    "fit": "슬림",
+    "garment_cm": {
+      "bust": 108.0,
+      "shoulder": 38.6
+    },
+    "ref_ease_cm": {
+      "bust": 8.0,
+      "shoulder": -1.9
+    }
+  },
+  "shirt_over_l": {
+    "design": "shirt_over",
+    "size": "L",
+    "fit": "오버핏",
+    "garment_cm": {
+      "bust": 130.0,
+      "shoulder": 39.1
+    },
+    "ref_ease_cm": {
+      "bust": 30.0,
+      "shoulder": -1.4
+    }
+  },
+  "dress_basic_l": {
+    "design": "dress_basic",
+    "size": "L",
+    "fit": "레귤러",
+    "garment_cm": {
+      "bust": 114.0,
+      "hips": 112.0,
+      "shoulder": 38.7
+    },
+    "ref_ease_cm": {
+      "bust": 14.0,
+      "hips": 6.0,
+      "shoulder": -1.8
+    }
+  },
+  "pants_slacks_l": {
+    "design": "pants_slacks",
+    "size": "L",
+    "fit": "레귤러",
+    "garment_cm": {
+      "waist": 85.8
+    },
+    "ref_ease_cm": {
+      "waist": 1.8
+    }
+  },
+  "skirt_pencil_l": {
+    "design": "skirt_pencil",
+    "size": "L",
+    "fit": "레귤러",
+    "garment_cm": {
+      "waist": 86.0,
+      "hips": 112.0
+    },
+    "ref_ease_cm": {
+      "waist": 2.0,
+      "hips": 6.0
+    }
+  }
+}

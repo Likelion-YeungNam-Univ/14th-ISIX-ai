@@ -28,3 +28,10 @@ out/
 .idea/
 .vscode/
 .DS_Store
+
+# 의류 파트 산출물 (R2로 서빙)
+garment/Logs/
+garment/Sim_results/
+garment/glb_out/
+*.obj
+*.glb
