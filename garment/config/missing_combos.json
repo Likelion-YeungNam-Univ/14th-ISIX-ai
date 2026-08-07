@@ -1,0 +1,9 @@
+{
+  "missing": [
+    "shirt_slim_m__H2B3",
+    "shirt_slim_s__H2B2",
+    "shirt_slim_s__H2B3"
+  ],
+  "reason": "옷 둘레가 체형 가슴둘레보다 작아 착용 불가. 시뮬 실패가 정상 결과.",
+  "handling": "3D 미리보기 없이 판정 결과만 표시할 것."
+}
