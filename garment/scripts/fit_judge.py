@@ -2,9 +2,9 @@ import json
 from pathlib import Path
 
 TOL_BY_FIT = {
-    '슬림':  {'bust': (-2, 3),  'waist': (-2, 3),  'hips': (-2, 3),  'shoulder': (-1, 1)},
-    '레귤러': {'bust': (-4, 6),  'waist': (-4, 6),  'hips': (-4, 6),  'shoulder': (-1, 2)},
-    '오버핏': {'bust': (-6, 12), 'waist': (-6, 12), 'hips': (-6, 12), 'shoulder': (-1, 4)},
+    '슬림':  {'bust': (-2, 3),  'waist': (-2, 3),  'hips': (-2, 3),  'shoulder': (-2, 2)},
+    '레귤러': {'bust': (-4, 6),  'waist': (-4, 6),  'hips': (-4, 6),  'shoulder': (-2, 3)},
+    '오버핏': {'bust': (-6, 12), 'waist': (-6, 12), 'hips': (-6, 12), 'shoulder': (-2, 5)},
 }
 LABEL = {'bust':'가슴', 'waist':'허리', 'hips':'엉덩이', 'shoulder':'어깨'}
 SPEC = json.loads(Path('garment_spec.json').read_text())
@@ -38,7 +38,7 @@ def recommend(user, design):
     return best, cands
 
 if __name__ == '__main__':
-    user = {'bust': 88, 'waist': 72, 'hips': 95, 'shoulder': 38}
+    user = {'bust': 88, 'waist': 72, 'hips': 95, 'shoulder': 44.1}
     print(f'사용자: {user}\n')
     for design in ['tshirt_basic','shirt_slim','shirt_over',
                    'dress_basic','pants_slacks','skirt_pencil']:

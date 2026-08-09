@@ -9,7 +9,7 @@
     },
     "ref_ease_cm": {
       "bust": 14.0,
-      "shoulder": -2.0
+      "shoulder": -7.9
     }
   },
   "shirt_slim_s": {
@@ -22,7 +22,7 @@
     },
     "ref_ease_cm": {
       "bust": 8.0,
-      "shoulder": -2.0
+      "shoulder": -7.9
     }
   },
   "shirt_over_s": {
@@ -35,7 +35,7 @@
     },
     "ref_ease_cm": {
       "bust": 30.0,
-      "shoulder": -2.0
+      "shoulder": -7.9
     }
   },
   "dress_basic_s": {
@@ -50,7 +50,7 @@
     "ref_ease_cm": {
       "bust": 14.0,
       "hips": 6.0,
-      "shoulder": -2.0
+      "shoulder": -7.9
     }
   },
   "pants_slacks_s": {
@@ -87,7 +87,7 @@
     },
     "ref_ease_cm": {
       "bust": 14.0,
-      "shoulder": -2.0
+      "shoulder": -9.0
     }
   },
   "shirt_slim_m": {
@@ -100,7 +100,7 @@
     },
     "ref_ease_cm": {
       "bust": 8.0,
-      "shoulder": -2.0
+      "shoulder": -9.0
     }
   },
   "shirt_over_m": {
@@ -113,7 +113,7 @@
     },
     "ref_ease_cm": {
       "bust": 30.0,
-      "shoulder": -2.0
+      "shoulder": -9.0
     }
   },
   "dress_basic_m": {
@@ -128,7 +128,7 @@
     "ref_ease_cm": {
       "bust": 14.0,
       "hips": 6.0,
-      "shoulder": -2.0
+      "shoulder": -9.0
     }
   },
   "pants_slacks_m": {
@@ -165,7 +165,7 @@
     },
     "ref_ease_cm": {
       "bust": 14.0,
-      "shoulder": -1.8
+      "shoulder": -8.9
     }
   },
   "shirt_slim_l": {
@@ -178,7 +178,7 @@
     },
     "ref_ease_cm": {
       "bust": 8.0,
-      "shoulder": -1.9
+      "shoulder": -9.0
     }
   },
   "shirt_over_l": {
@@ -191,7 +191,7 @@
     },
     "ref_ease_cm": {
       "bust": 30.0,
-      "shoulder": -1.4
+      "shoulder": -8.5
     }
   },
   "dress_basic_l": {
@@ -206,7 +206,7 @@
     "ref_ease_cm": {
       "bust": 14.0,
       "hips": 6.0,
-      "shoulder": -1.8
+      "shoulder": -8.9
     }
   },
   "pants_slacks_l": {
