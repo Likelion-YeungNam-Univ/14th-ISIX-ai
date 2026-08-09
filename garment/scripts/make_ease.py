@@ -35,6 +35,7 @@ for obj in sorted(Path('Sim_results').glob('*.obj')):
         continue
 
     g = trimesh.load(obj, process=False)
+    if g.vertices[:,1].max() < 10: g.apply_scale(100.0)
     b, tree = body(bname)
 
     dist, idx = tree.query(g.vertices)

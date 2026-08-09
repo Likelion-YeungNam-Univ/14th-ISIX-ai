@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
 
+ALIAS = {'bust': 'chest_circ', 'waist': 'waist_circ',
+         'hips': 'hip_circ', 'shoulder': 'shoulder_width'}
+
 TOL_BY_FIT = {
     '슬림':  {'bust': (-2, 3),  'waist': (-2, 3),  'hips': (-2, 3),  'shoulder': (-2, 2)},
     '레귤러': {'bust': (-4, 6),  'waist': (-4, 6),  'hips': (-4, 6),  'shoulder': (-2, 3)},
@@ -14,8 +17,10 @@ def judge_one(user, key):
     g = SPEC[key]
     parts, worst = {}, 0.0
     for part, gcm in g['garment_cm'].items():
-        if part not in user: continue
-        actual = round(gcm - user[part], 1)          # 실제 여유
+        ukey = ALIAS[part]
+        if ukey not in user: continue
+        uval = user[ukey]
+        actual = round(gcm - uval, 1)          # 실제 여유
         dev = round(actual - g['ref_ease_cm'][part], 1)  # 편차
         lo, hi = TOL_BY_FIT[g['fit']][part]
         if dev < lo:   v, color = '꽉 낌', 'red'
@@ -26,6 +31,11 @@ def judge_one(user, key):
                        'deviation': dev, 'verdict': v, 'color': color}
         over = max(lo - dev, dev - hi, 0)
         worst = max(worst, over)
+    if not parts:
+        raise ValueError(
+            f"{key}: 평가 가능한 부위가 없습니다. "
+            f"필요한 키 {sorted(ALIAS[p] for p in g['garment_cm'])} / "
+            f"받은 키 {sorted(user)}")
     total = round(sum(abs(p['deviation']) for p in parts.values()), 1)
     return {'garment': key, 'size': g['size'], 'fit': g['fit'],
             'parts': parts, 'penalty': round(worst, 1), 'total_dev': total,
@@ -38,7 +48,7 @@ def recommend(user, design):
     return best, cands
 
 if __name__ == '__main__':
-    user = {'bust': 88, 'waist': 72, 'hips': 95, 'shoulder': 44.1}
+    user = {'chest_circ': 88, 'waist_circ': 72, 'hip_circ': 95, 'shoulder_width': 44.1}
     print(f'사용자: {user}\n')
     for design in ['tshirt_basic','shirt_slim','shirt_over',
                    'dress_basic','pants_slacks','skirt_pencil']:

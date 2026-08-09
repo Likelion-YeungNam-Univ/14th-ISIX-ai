@@ -30,6 +30,7 @@ for obj in sorted(Path('Sim_results').glob('*.obj')):
     key, body_name = obj.stem.split('__')
     if key not in SPEC: continue
     g = trimesh.load(obj, process=False)
+    if g.vertices[:,1].max() < 10: g.apply_scale(100.0)
     body, tree, vn = load_body(body_name)
 
     dist, idx = tree.query(g.vertices)
@@ -55,6 +56,5 @@ for obj in sorted(Path('Sim_results').glob('*.obj')):
 Path('heatmap_index.json').write_text(json.dumps(log, indent=2, ensure_ascii=False))
 print(f'{len(log)}개 GLB 생성\n')
 for k, v in log.items():
-    if '__mean_female' not in k: continue
     print(f"{k.replace('__mean_female',''):20s} 평균간격 {v['mean_gap']:5.2f}cm  "
           f"관통 {v['pierce_pct']:5.1f}%  밀착 {v['tight_pct']:5.1f}%  여유 {v['loose_pct']:5.1f}%")
