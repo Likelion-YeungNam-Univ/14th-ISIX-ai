@@ -24,6 +24,7 @@ def get_command_args():
         default='./assets/Sim_props/default_sim_props.yaml')
 
     parser.add_argument('--body', '-b', type=str, default='mean_all')
+    parser.add_argument('--smpl', action='store_true')
     args = parser.parse_args()
     print('Commandline arguments: ', args)
 
@@ -47,7 +48,7 @@ if __name__ == "__main__":
         out_path=sys_props['output'], 
         in_name=garment_name,
         body_name=args.body,
-        smpl_body=False,   # NOTE: depends on chosen body model
+        smpl_body=args.smpl,   # NOTE: depends on chosen body model
         add_timestamp=True
     )
 

@@ -1,7 +1,7 @@
 import json, re, subprocess, time, shutil
 from pathlib import Path
 
-BODIES = ['mean_all', 'mean_female']   # 팀원 체형 오면 여기 12개로 교체
+BODIES = ['H0B0', 'H0B1', 'H0B2', 'H0B3', 'H1B0', 'H1B1', 'H1B2', 'H1B3', 'H2B0', 'H2B1', 'H2B2', 'H2B3']   # body_grid.json 12구간
 TIMEOUT = 300
 
 patterns = json.loads(Path('patterns_index.json').read_text())
@@ -19,7 +19,7 @@ for i, (pname, body) in enumerate(jobs, 1):
     t0 = time.time()
     try:
         r = subprocess.run(
-            ['python', 'batch_sim.py', '-p', patterns[pname], '-b', body],
+            ['python', 'batch_sim.py', '-p', patterns[pname], '-b', body, '--smpl'],
             capture_output=True, text=True, timeout=TIMEOUT)
         log = r.stdout + r.stderr
     except subprocess.TimeoutExpired:
