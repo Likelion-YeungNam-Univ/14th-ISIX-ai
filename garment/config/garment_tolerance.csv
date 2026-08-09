@@ -1,0 +1,13 @@
+design,fit,part,dev_min,dev_max
+tshirt_basic,레귤러,chest_circ,-4,6
+tshirt_basic,레귤러,shoulder_width,-2,3
+shirt_slim,슬림,chest_circ,-2,3
+shirt_slim,슬림,shoulder_width,-2,2
+shirt_over,오버핏,chest_circ,-6,12
+shirt_over,오버핏,shoulder_width,-2,5
+dress_basic,레귤러,chest_circ,-4,6
+dress_basic,레귤러,hip_circ,-4,6
+dress_basic,레귤러,shoulder_width,-2,3
+pants_slacks,레귤러,waist_circ,-4,6
+skirt_pencil,레귤러,waist_circ,-4,6
+skirt_pencil,레귤러,hip_circ,-4,6
