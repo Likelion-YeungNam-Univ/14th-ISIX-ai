@@ -38,7 +38,7 @@ for i, (pname, body) in enumerate(jobs, 1):
     }
 
     objs = sorted(Path('Logs').rglob('*_sim.obj'), key=lambda p: p.stat().st_mtime)
-    if objs and time.time() - objs[-1].stat().st_mtime < TIMEOUT:
+    if objs and objs[-1].stat().st_mtime > t0:
         shutil.copy(objs[-1], out_dir / f'{key}.obj')
         rec['obj'] = f'Sim_results/{key}.obj'
 
