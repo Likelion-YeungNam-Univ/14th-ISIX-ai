@@ -22,7 +22,7 @@ from typing import Optional
 
 from app.core.config import settings
 from app.core.exceptions import ClosrException, ErrorCode
-from app.services import storage
+from app.services import bodytype, storage
 from app.services.pipeline import config as pcfg
 from app.services.pipeline import step1_photo, step2_shape, step3_scale, step4_measure
 
@@ -58,6 +58,12 @@ class AvatarOutput:
     body_bucket: str
     measurements: dict
     confidence: float
+    # 체형 유형. 허리·가슴·엉덩이 중 하나라도 계측에 실패하면 None 이다.
+    # body_bucket(격자 배정)과는 다른 값이다 — 격자는 사전 계산 GLB 를 찾기
+    # 위한 내부 키이고, 이쪽은 사용자에게 보여주는 진단 결과다.
+    body_type: Optional[str] = None
+    body_type_label: Optional[str] = None
+    body_type_message: Optional[str] = None
     warnings: list = field(default_factory=list)
 
 
@@ -149,14 +155,25 @@ def generate(photo_bytes: bytes, height_cm: int, weight_kg: int,
     if bucket is None:
         warnings.append("가슴둘레를 측정하지 못해 체형 구간을 배정하지 못했습니다.")
 
-    logger.info("[%s] 완료 — 구간 %s, confidence %.3f, 경고 %d건",
-                avatar_id, bucket, est.get("confidence", 0), len(warnings))
+    measured = {k: meas[k] for k in pcfg.MEASUREMENTS if meas.get(k) is not None}
+
+    # 체형 유형 판정. 판정에 필요한 둘레가 없으면 None 이 오고, 그때는
+    # 체형 정보 없이 아바타만 내려간다. 여기서 예외를 던지면 10~20초 걸린
+    # 파이프라인 결과를 통째로 버리게 된다.
+    shape = bodytype.classify(measured, height_cm)
+
+    logger.info("[%s] 완료 — 구간 %s, 체형 %s, confidence %.3f, 경고 %d건",
+                avatar_id, bucket, (shape or {}).get("body_type"),
+                est.get("confidence", 0), len(warnings))
 
     return AvatarOutput(
         glb_path=glb_path,
         glb_url=glb_url,
         body_bucket=bucket or "",
-        measurements={k: meas[k] for k in pcfg.MEASUREMENTS if meas.get(k) is not None},
+        measurements=measured,
         confidence=float(est.get("confidence", 0.0)),
+        body_type=(shape or {}).get("body_type"),
+        body_type_label=(shape or {}).get("body_type_label"),
+        body_type_message=(shape or {}).get("body_type_message"),
         warnings=warnings,
     )

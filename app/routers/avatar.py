@@ -82,6 +82,9 @@ def _run_pipeline(avatar_id: str, photo_bytes: bytes, height: int, weight: int) 
             body_bucket=out.body_bucket,
             measurements=out.measurements,
             confidence=out.confidence,
+            body_type=out.body_type,
+            body_type_label=out.body_type_label,
+            body_type_message=out.body_type_message,
             warnings=out.warnings,
         ),
     )
