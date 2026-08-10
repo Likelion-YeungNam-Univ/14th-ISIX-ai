@@ -11,3 +11,6 @@ mediapipe==0.10.21
 trimesh==4.12.2
 smplx==0.1.28
 torch==2.8.0
+
+# R2(S3 호환) 업로드용. R2 설정이 없으면 import 되지 않는다.
+boto3==1.35.36
