@@ -22,6 +22,7 @@ from typing import Optional
 
 from app.core.config import settings
 from app.core.exceptions import ClosrException, ErrorCode
+from app.services import storage
 from app.services.pipeline import config as pcfg
 from app.services.pipeline import step1_photo, step2_shape, step3_scale, step4_measure
 
@@ -51,6 +52,9 @@ def load_body():
 @dataclass
 class AvatarOutput:
     glb_path: Path
+    # 프론트가 그대로 3D 뷰어에 넣는 주소.
+    # R2 가 설정돼 있으면 https 절대 주소, 아니면 AI 서버의 상대 경로다.
+    glb_url: str
     body_bucket: str
     measurements: dict
     confidence: float
@@ -123,6 +127,23 @@ def generate(photo_bytes: bytes, height_cm: int, weight_kg: int,
     mesh.export(str(glb_path))
 
     warnings = list(seen.get("warnings", [])) + list(warns)
+
+    # --- R2 업로드 ---
+    # 실패해도 아바타 생성 자체는 살린다. 10~20초 걸린 결과를 저장소 문제로
+    # 통째로 버릴 이유가 없다. 대신 로컬 주소로 내려가는 사실을 경고에 남긴다.
+    # 이걸 조용히 넘기면 운영에서 http 주소가 나가고, 프론트가 https 면
+    # 브라우저가 막아서 "모델이 안 보인다" 로만 드러난다.
+    glb_url = f"{settings.avatar_url_prefix}/{glb_path.name}"
+    if storage.is_configured():
+        try:
+            glb_url = storage.upload_glb(glb_path, glb_path.name)
+        except Exception as e:
+            logger.error("[%s] R2 업로드 실패, 로컬 주소로 대체합니다: %s",
+                         avatar_id, e)
+            warnings.append(
+                "GLB 를 저장소에 올리지 못해 임시 주소로 내려갑니다. "
+                "https 페이지에서는 모델이 보이지 않을 수 있습니다.")
+
     if not extra.get("calibrated"):
         warnings.append("실측 보정 전 값입니다. 계통 오차가 남아 있습니다.")
     if bucket is None:
@@ -133,6 +154,7 @@ def generate(photo_bytes: bytes, height_cm: int, weight_kg: int,
 
     return AvatarOutput(
         glb_path=glb_path,
+        glb_url=glb_url,
         body_bucket=bucket or "",
         measurements={k: meas[k] for k in pcfg.MEASUREMENTS if meas.get(k) is not None},
         confidence=float(est.get("confidence", 0.0)),
