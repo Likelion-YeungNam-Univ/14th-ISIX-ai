@@ -78,7 +78,7 @@ def _run_pipeline(avatar_id: str, photo_bytes: bytes, height: int, weight: int) 
         avatar_id=avatar_id,
         status=AvatarStatus.DONE,
         result=AvatarResult(
-            glb_url=f"{settings.avatar_url_prefix}/{out.glb_path.name}",
+            glb_url=out.glb_url,
             body_bucket=out.body_bucket,
             measurements=out.measurements,
             confidence=out.confidence,

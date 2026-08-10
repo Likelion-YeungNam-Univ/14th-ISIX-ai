@@ -35,9 +35,20 @@ class Settings(BaseSettings):
     # 산출물
     draped_dir: Path = Path("./assets/draped")
     avatar_dir: Path = Path("./assets/avatars")
-    # 생성된 GLB 를 서빙할 공개 URL 접두어.
-    # 운영에서는 CDN(Cloudflare R2 등) 주소로 바꾸세요.
+    # R2 설정이 없을 때 쓰는 접두어. AI 서버가 직접 서빙합니다.
     avatar_url_prefix: str = "/static/avatars"
+
+    # Cloudflare R2. 다섯 개가 모두 있어야 업로드합니다.
+    # 하나라도 비면 위 avatar_url_prefix 로 서빙합니다(로컬 개발용).
+    #
+    # 액세스 키는 저장소에 넣지 않습니다. 운영 서버의 .env 에만 둡니다.
+    # 의류 파트가 같은 버킷의 garments/v1/ 을 쓰고 있어 접두어로 분리합니다.
+    r2_endpoint: str = ""
+    r2_bucket: str = ""
+    r2_public_url: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_key_prefix: str = "avatars/v1"
 
     # 처리 제한
     max_upload_size_mb: int = 10
