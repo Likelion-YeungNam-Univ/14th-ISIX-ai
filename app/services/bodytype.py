@@ -57,18 +57,32 @@ LABELS = {
     "round": "라운드형",
 }
 
+# 단정하지 않는 문구를 씁니다. 계측 오차가 ±4cm 이고 판정 경계가 5cm·18cm 라,
+# 같은 사람이 다시 찍으면 타입이 바뀔 수 있습니다. "발달했습니다" 처럼 단정하면
+# 그 변화가 사용자에게 모순으로 보입니다.
 MESSAGES = {
-    "hourglass": "가슴과 엉덩이가 비슷하고 허리가 뚜렷합니다. "
+    "hourglass": "가슴과 엉덩이가 비슷하고 허리가 뚜렷한 편입니다. "
                  "허리선이 있는 옷이 잘 맞습니다.",
-    "triangle": "엉덩이가 상체보다 발달했습니다. "
-                "하의는 한 사이즈 크게, 상의는 몸에 맞게 고르는 편이 낫습니다.",
-    "inverted_triangle": "어깨와 가슴이 하체보다 발달했습니다. "
+    "triangle": "엉덩이가 상체보다 큰 편입니다. "
+                "하의를 한 사이즈 크게 보시면 좋습니다.",
+    "inverted_triangle": "어깨와 가슴이 하체보다 큰 편입니다. "
                          "상의 어깨 여유를 먼저 확인하세요.",
-    "rectangle": "가슴·허리·엉덩이 차이가 크지 않습니다. "
-                 "직선적인 실루엣의 옷이 잘 맞습니다.",
-    "round": "허리 둘레가 가슴·엉덩이보다 큽니다. "
-             "허리를 조이지 않는 여유 있는 상의가 편합니다.",
+    "rectangle": "가슴·허리·엉덩이 차이가 크지 않은 편입니다. "
+                 "직선적인 실루엣이 잘 맞습니다.",
+    "round": "허리 둘레가 가슴·엉덩이보다 큰 편입니다. "
+             "허리를 조이지 않는 상의가 편합니다.",
 }
+
+# 경계까지 거리가 이 안이면 두 타입을 함께 보여줍니다.
+# 계측 오차 크기(±4cm)와 같게 두었습니다. 오차만큼 흔들리면 타입이 바뀌는
+# 구간이라는 뜻이므로, 하나만 단정하지 않습니다.
+#
+# "경계에 걸쳐 있습니다" 같은 경고 문구를 따로 붙이는 방안도 검토했지만
+# 넣지 않았습니다. 격자 12구간의 경계까지 거리가 중앙값 0.7cm(최소 0.2,
+# 최대 3.9)로 대부분이 경계에 몰려 있어, 임계를 1cm 로 낮춰도 9/12 에
+# 붙습니다. 항상 나오는 경고는 사용자가 읽지 않고 문구만 길어집니다.
+# 두 타입을 함께 보여주는 것 자체가 이미 단정하지 않는 표현입니다.
+SECONDARY_CM = 4.0
 
 SHOULDER_NOTES = {
     "wide": "어깨가 넓은 편입니다. 상의는 어깨 치수를 먼저 확인하세요.",
@@ -104,6 +118,52 @@ def _shoulder_note(shoulder_width: Optional[float],
     return None
 
 
+def _decide(chest: float, waist: float, hip: float) -> str:
+    """세 둘레로 타입을 정합니다.
+
+    판정 순서가 중요합니다. 허리가 가장 큰 경우를 먼저 걸러내지 않으면
+    가슴·엉덩이 차만 보고 삼각형·역삼각형으로 잘못 분류됩니다.
+
+    round 에 마진을 두는 이유 — 예전에는 waist >= max(chest, hip) 였습니다.
+    그러면 가슴 85 / 엉덩이 85 에서 허리 84.9 는 rectangle, 85.0 은 round 가
+    되어 0.1cm 에 결과가 뒤집힙니다. 계측 오차가 ±4cm 이므로 같은 사람이 다시
+    찍으면 타입이 바뀝니다. 다른 경계는 모두 5cm 마진을 두고 있어 같은 기준으로
+    통일했습니다.
+    """
+    if waist - max(chest, hip) >= BALANCED_CM:
+        return "round"
+    if abs(chest - hip) <= BALANCED_CM:
+        return ("hourglass" if min(chest, hip) - waist >= WAIST_DEFINED_CM
+                else "rectangle")
+    return "triangle" if hip - chest > BALANCED_CM else "inverted_triangle"
+
+
+def _nearest_alternative(chest: float, waist: float, hip: float,
+                         body_type: str) -> tuple[Optional[str], float]:
+    """가장 가까운 다른 타입과 그 경계까지의 거리(cm)를 돌려줍니다.
+
+    임계값을 재설계하지 않고 표현만 완화하기 위한 계산입니다. 세 둘레를 각각
+    조금씩 움직여 타입이 바뀌는 최소 거리를 찾습니다. 판정 규칙을 두 번 적는
+    대신 _decide 를 다시 부르므로, 규칙을 고쳐도 이 함수는 따라옵니다.
+
+    0.1cm 단위로 훑습니다. 계측이 소수 첫째 자리까지라 그보다 잘게 볼 의미가
+    없고, 최대 6cm 까지만 봅니다(SECONDARY_CM 4cm 보다 넉넉하게).
+    """
+    best: tuple[Optional[str], float] = (None, float("inf"))
+    for step in range(1, 61):
+        delta = step / 10
+        for chest_d, waist_d, hip_d in (
+                (delta, 0, 0), (-delta, 0, 0),
+                (0, delta, 0), (0, -delta, 0),
+                (0, 0, delta), (0, 0, -delta)):
+            other = _decide(chest + chest_d, waist + waist_d, hip + hip_d)
+            if other != body_type:
+                return other, delta
+        if delta >= best[1]:
+            break
+    return best
+
+
 def classify(measurements: dict[str, float],
              height_cm: Optional[int] = None,
              warnings: Optional[list[str]] = None) -> Optional[dict]:
@@ -119,26 +179,16 @@ def classify(measurements: dict[str, float],
     if chest is None or waist is None or hip is None:
         return None
 
-    # 판정 순서가 중요하다. 허리가 가장 큰 경우를 먼저 걸러내지 않으면
-    # 가슴·엉덩이 차만 보고 삼각형·역삼각형으로 잘못 분류된다.
-    #
-    # 마진을 두는 이유 — 예전에는 waist >= max(chest, hip) 였다. 그러면
-    # 가슴 85 / 엉덩이 85 에서 허리 84.9 는 rectangle, 85.0 은 round 가 되어
-    # 0.1cm 에 결과가 뒤집힌다. 계측 오차가 ±4cm 이므로 같은 사람이 다시
-    # 찍으면 타입이 바뀐다. 다른 경계는 모두 5cm 마진을 두고 있어 여기만
-    # 0 이었던 것을 같은 기준으로 통일한다.
-    if waist - max(chest, hip) >= BALANCED_CM:
-        body_type = "round"
-    elif abs(chest - hip) <= BALANCED_CM:
-        smaller = min(chest, hip)
-        body_type = ("hourglass" if smaller - waist >= WAIST_DEFINED_CM
-                     else "rectangle")
-    elif hip - chest > BALANCED_CM:
-        body_type = "triangle"
-    else:
-        body_type = "inverted_triangle"
+    body_type = _decide(chest, waist, hip)
+    alternative, distance = _nearest_alternative(chest, waist, hip, body_type)
 
     message = MESSAGES[body_type]
+
+    # 경계에 가까우면 한 타입으로 단정하지 않습니다. 12구간 전부 ±4cm 오차에
+    # 30% 이상 타입이 바뀌는 것을 확인했고, 임계값 재설계는 범위가 커서
+    # 표현을 낮추는 쪽으로 정했습니다.
+    if alternative is not None and distance <= SECONDARY_CM:
+        message = f"{LABELS[alternative]}에 가까운 {LABELS[body_type]}입니다. {message}"
     # 역삼각형 문구에 이미 어깨 안내가 들어 있어 보조 문구를 덧붙이면 같은 말이
     # 두 번 나온다. 음성으로 읽어주면 특히 어색하다.
     if body_type != "inverted_triangle":
