@@ -160,7 +160,9 @@ def generate(photo_bytes: bytes, height_cm: int, weight_kg: int,
     # 체형 유형 판정. 판정에 필요한 둘레가 없으면 None 이 오고, 그때는
     # 체형 정보 없이 아바타만 내려간다. 여기서 예외를 던지면 10~20초 걸린
     # 파이프라인 결과를 통째로 버리게 된다.
-    shape = bodytype.classify(measured, height_cm)
+    # warnings 를 함께 넘긴다. 팔이 몸통에 붙은 사진이면 어깨 계측이 과대
+    # 추정되므로 어깨 보조 문구를 내보내지 않는다.
+    shape = bodytype.classify(measured, height_cm, warnings)
 
     logger.info("[%s] 완료 — 구간 %s, 체형 %s, confidence %.3f, 경고 %d건",
                 avatar_id, bucket, (shape or {}).get("body_type"),

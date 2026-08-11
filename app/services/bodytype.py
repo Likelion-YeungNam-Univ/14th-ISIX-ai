@@ -32,6 +32,23 @@ WAIST_DEFINED_CM = 18.0
 SHOULDER_WIDE_RATIO = 0.250
 SHOULDER_NARROW_RATIO = 0.220
 
+# 이 경고가 있으면 어깨 보조 문구를 아예 내보내지 않는다.
+#
+# 팔이 몸통에 붙은 사진에서는 어깨 실루엣이 팔까지 어깨로 잡아 과대 추정된다.
+# 검증 사진이 정확히 그랬는데(165cm 에 45.6cm, 비율 0.276) 그대로 두면
+# "어깨가 넓은 편입니다" 가 확언으로 사용자 화면에 나간다. 어깨를 판정에서
+# 뺀 이유가 값을 믿을 수 없어서인데 문구는 확언으로 내보내면 모순이다.
+#
+# step1_photo.py 의 경고 문구와 짝이다. 문구가 바뀌면 이 가드가 조용히
+# 풀리므로 함께 고쳐야 한다. 아래 세 곳에서 나온다.
+#   step1_photo.py:304  "... 팔을 몸에서 벌린 사진이 필요합니다."
+#   step1_photo.py:331  "upper_arm_width: 팔이 몸통에 붙어 분리되지 않습니다."
+#   step1_photo.py:379  "팔이 몸통에 붙어 있습니다 (분리 구간 0%). ..."
+ARM_WARNING_MARKERS = (
+    "팔이 몸통에 붙어",
+    "팔을 몸에서 벌린",
+)
+
 LABELS = {
     "hourglass": "모래시계형",
     "triangle": "삼각형",
@@ -60,9 +77,23 @@ SHOULDER_NOTES = {
 }
 
 
+def _has_arm_warning(warnings: Optional[list[str]]) -> bool:
+    """어깨 계측을 믿을 수 없게 만드는 경고가 있는지."""
+    if not warnings:
+        return False
+    return any(marker in w for w in warnings for marker in ARM_WARNING_MARKERS)
+
+
 def _shoulder_note(shoulder_width: Optional[float],
-                   height_cm: Optional[int]) -> Optional[str]:
-    """어깨너비를 키로 정규화해 보조 문구를 만듭니다. 판정에는 쓰지 않습니다."""
+                   height_cm: Optional[int],
+                   warnings: Optional[list[str]]) -> Optional[str]:
+    """어깨너비를 키로 정규화해 보조 문구를 만듭니다. 판정에는 쓰지 않습니다.
+
+    팔 관련 경고가 있으면 문구를 만들지 않습니다. 계측이 과대 추정된 상태에서
+    "어깨가 넓은 편입니다" 를 확언으로 내보내면 사용자를 잘못 안내합니다.
+    """
+    if _has_arm_warning(warnings):
+        return None
     if not shoulder_width or not height_cm:
         return None
     ratio = shoulder_width / height_cm
@@ -74,7 +105,8 @@ def _shoulder_note(shoulder_width: Optional[float],
 
 
 def classify(measurements: dict[str, float],
-             height_cm: Optional[int] = None) -> Optional[dict]:
+             height_cm: Optional[int] = None,
+             warnings: Optional[list[str]] = None) -> Optional[dict]:
     """체형 유형을 판정합니다. 필요한 둘레가 없으면 None 을 반환합니다.
 
     None 을 반환하는 경우가 실제로 발생합니다. 계측이 실패한 부위는
@@ -89,7 +121,13 @@ def classify(measurements: dict[str, float],
 
     # 판정 순서가 중요하다. 허리가 가장 큰 경우를 먼저 걸러내지 않으면
     # 가슴·엉덩이 차만 보고 삼각형·역삼각형으로 잘못 분류된다.
-    if waist >= chest and waist >= hip:
+    #
+    # 마진을 두는 이유 — 예전에는 waist >= max(chest, hip) 였다. 그러면
+    # 가슴 85 / 엉덩이 85 에서 허리 84.9 는 rectangle, 85.0 은 round 가 되어
+    # 0.1cm 에 결과가 뒤집힌다. 계측 오차가 ±4cm 이므로 같은 사람이 다시
+    # 찍으면 타입이 바뀐다. 다른 경계는 모두 5cm 마진을 두고 있어 여기만
+    # 0 이었던 것을 같은 기준으로 통일한다.
+    if waist - max(chest, hip) >= BALANCED_CM:
         body_type = "round"
     elif abs(chest - hip) <= BALANCED_CM:
         smaller = min(chest, hip)
@@ -104,7 +142,8 @@ def classify(measurements: dict[str, float],
     # 역삼각형 문구에 이미 어깨 안내가 들어 있어 보조 문구를 덧붙이면 같은 말이
     # 두 번 나온다. 음성으로 읽어주면 특히 어색하다.
     if body_type != "inverted_triangle":
-        note = _shoulder_note(measurements.get("shoulder_width"), height_cm)
+        note = _shoulder_note(measurements.get("shoulder_width"), height_cm,
+                              warnings)
         if note:
             message = f"{message} {note}"
 
