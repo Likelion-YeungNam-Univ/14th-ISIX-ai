@@ -50,6 +50,18 @@ class Settings(BaseSettings):
     r2_secret_access_key: str = ""
     r2_key_prefix: str = "avatars/v1"
 
+    # OpenAI (챗봇). 키가 없으면 챗 엔드포인트만 동작하지 않고
+    # 아바타 생성은 그대로 됩니다. 키는 저장소에 넣지 않고 운영 .env 에만 둡니다.
+    openai_api_key: str = ""
+
+    # 답변이 2~3문장 120자라 큰 모델이 필요하지 않습니다. 크레딧 100달러를
+    # 아끼려면 여기를 올리지 마세요. OPENAI_MODEL 로 바꿀 수 있습니다.
+    openai_model: str = "gpt-4o-mini"
+
+    # 요약은 스트림이 끝난 뒤 done 직전에 부릅니다. 여기서 오래 걸리면
+    # 마지막 문장 TTS 가 끝난 뒤에도 done 이 안 와 화면이 멈춘 것처럼 보입니다.
+    openai_timeout_sec: int = 20
+
     # 처리 제한
     max_upload_size_mb: int = 10
     optimization_timeout_sec: int = 45
@@ -62,6 +74,15 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def openai_enabled(self) -> bool:
+        """키가 있을 때만 챗 엔드포인트를 켭니다.
+
+        키 없이 호출하면 OpenAI 라이브러리가 인증 오류를 던지는데, 그 메시지가
+        사용자에게 그대로 노출되면 원인을 알 수 없습니다. 미리 걸러 안내합니다.
+        """
+        return bool(self.openai_api_key.strip())
 
     @property
     def max_upload_bytes(self) -> int:
