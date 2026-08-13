@@ -27,6 +27,8 @@ class ErrorCode(Enum):
 
     # 조회
     AVATAR_NOT_FOUND = (404, "아바타를 찾을 수 없습니다")
+    # 아바타는 있는데 아직 쓸 수 없는 상태입니다. 백엔드 AVATAR_NOT_READY 와 같은 뜻입니다.
+    AVATAR_NOT_READY = (409, "아바타 생성이 아직 끝나지 않았습니다. 잠시 후 다시 시도해주세요")
     FITTING_NOT_AVAILABLE = (404, "해당 조합은 준비 중입니다. 다른 사이즈를 선택해주세요")
 
     # 서버
