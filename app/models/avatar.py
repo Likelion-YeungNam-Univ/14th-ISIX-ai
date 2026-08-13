@@ -61,6 +61,15 @@ class AvatarJobResponse(BaseModel):
     )
 
 
+BODY_TYPE_LABELS = {
+    "hourglass": "모래시계형",
+    "triangle": "삼각형",
+    "inverted_triangle": "역삼각형",
+    "rectangle": "직사각형",
+    "round": "라운드형",
+}
+
+
 class AvatarResult(BaseModel):
     """완료된 아바타의 내용."""
 
@@ -68,6 +77,21 @@ class AvatarResult(BaseModel):
     body_bucket: str = Field(..., description="체형 12구간 코드. H{0-2}B{0-3}")
     measurements: dict[str, float] = Field(..., description="12부위 치수 (cm)")
     confidence: float = Field(..., ge=0, le=1, description="추정 신뢰도")
+    # 아래 세 개는 함께 채워지거나 함께 비어 있습니다.
+    # 가슴·허리·엉덩이 중 하나라도 계측에 실패하면 판정할 수 없어 null 입니다.
+    # body_bucket 과 혼동하지 마세요 — 그쪽은 사전 계산 GLB 조회용 내부 키이고,
+    # 이쪽은 사용자에게 보여주는 진단 결과입니다.
+    body_type: Optional[str] = Field(
+        None,
+        description="체형 유형. hourglass | triangle | inverted_triangle "
+                    "| rectangle | round. 계측 실패 시 null",
+    )
+    body_type_label: Optional[str] = Field(
+        None, description="체형 유형 한글 라벨 (예: 모래시계형)"
+    )
+    body_type_message: Optional[str] = Field(
+        None, description="체형 설명 문구. 그대로 화면에 표시하거나 음성으로 읽습니다"
+    )
     warnings: list[str] = Field(default_factory=list, description="품질 경고")
 
 

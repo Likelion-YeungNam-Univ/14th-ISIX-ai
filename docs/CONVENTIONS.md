@@ -121,6 +121,9 @@ GET /api/avatar/{avatar_id}
       "body_bucket": "H1B1",
       "measurements": { "shoulder_width": 40.1, "chest_circ": 87.2 },
       "confidence": 0.771,
+      "body_type": "hourglass",
+      "body_type_label": "모래시계형",
+      "body_type_message": "가슴과 엉덩이가 비슷하고 허리가 뚜렷합니다. 허리선이 있는 옷이 잘 맞습니다.",
       "warnings": []
     },
     "error_message": null
@@ -131,6 +134,19 @@ GET /api/avatar/{avatar_id}
 
 `status` 는 `processing` · `done` · `failed` 중 하나입니다.
 `done` 일 때만 `result` 가 채워지고, `failed` 면 `error_message` 에 사유가 담깁니다.
+
+#### 체형 유형
+
+`body_type` 은 `hourglass` · `triangle` · `inverted_triangle` · `rectangle` · `round`
+다섯 가지입니다. 가슴·허리·엉덩이 **둘레** 세 개로 판정하며, 하나라도 계측에
+실패하면 세 필드가 함께 `null` 입니다. 프론트는 `null` 분기를 처리해야 합니다.
+
+`body_bucket` 과 혼동하지 마세요. 그쪽은 사전 계산 GLB 를 찾기 위한 내부 격자
+키(`H{0-2}B{0-3}`)이고, `body_type` 은 사용자에게 보여주는 진단 결과입니다.
+
+어깨(`shoulder_width`)는 판정에 쓰지 않습니다. 너비라서 둘레와 같은 축에서
+비교할 수 없고, 팔이 몸통에 붙은 사진에서 과대 추정됩니다. 키 대비 비율로
+`body_type_message` 뒤에 보조 문구만 덧붙입니다.
 
 ### 가상 피팅
 
