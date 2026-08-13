@@ -14,6 +14,7 @@
 걸립니다.
 """
 
+from pathlib import Path
 from typing import Optional
 
 from app.models.chat import ChatRequest, FitContext, PastFitting, Profile
@@ -35,39 +36,21 @@ VERDICT_LABELS = {
 
 # ── ① 고정 지시 ─────────────────────────────────────────────────────────
 #
-# 의류 지식(핏별 특성 · 부위별 설명)은 의류 파트가 작성합니다. 받으면
-# GARMENT_KNOWLEDGE 에 넣습니다. 비어 있어도 답변은 나갑니다.
-GARMENT_KNOWLEDGE = ""
+# 의류 파트가 작성한 상담 규칙입니다. 코드에 문장을 박아 넣지 않고 파일로 둡니다.
+# 문구를 다듬는 사람과 코드를 고치는 사람이 다르고, 문장이 바뀔 때마다 파이썬
+# 파일을 건드리면 리뷰에서 규칙 변경과 로직 변경이 섞입니다.
+#
+# 파일이 없으면 기동에 실패시킵니다. 규칙 없이 뜨면 길이 제한도 금지 사항도
+# 없는 챗봇이 되는데, 응답은 정상으로 보여서 발견이 늦습니다.
+_PROMPT_PATH = Path(__file__).with_name("garment_prompt.txt")
 
-BASE_INSTRUCTION = """당신은 의류 사이즈를 상담하는 한국어 도우미입니다.
+try:
+    GARMENT_PROMPT = _PROMPT_PATH.read_text(encoding="utf-8").strip()
+except OSError as exc:  # pragma: no cover - 배포 누락
+    raise RuntimeError(f"{_PROMPT_PATH.name} 을 읽을 수 없습니다") from exc
 
-[길이]
-- 2~3문장, 120자 이내로 답하세요. 음성으로 읽히므로 길면 듣기 어렵습니다.
-- 넘칠 것 같으면 뒤에서부터 뺍니다: ①현재 판정 ②어깨 경고 ③지난 대화 인용 ④지난 피팅 비교
-- ①②는 빼지 않습니다. ④를 먼저 뺍니다.
-- 어깨 경고와 지난 피팅 비교를 한 답변에 같이 넣지 마세요. 둘 다 넣으면 120자를 넘습니다.
-
-[수치]
-- 받은 수치만 인용하세요. 없는 수치를 만들지 마세요.
-- 판정은 편차(deviation)로 말합니다. 실제 여유(actual_ease)는 사용자가 직접 물을 때만 씁니다.
-- 두 수치의 차이가 1cm 미만이면 비교하지 마세요. 계측 오차(±4cm)보다 작습니다.
-- 부위는 한글로 부릅니다. 어깨 · 가슴 · 허리 · 엉덩이.
-- 사이즈는 대문자로 말합니다. S · M · L.
-
-[금지]
-- 색으로 사이즈를 말하지 마세요. 3D 히트맵 색은 사이즈를 구분하지 못합니다.
-  잘 맞는 옷도 붉은 부분이 30% 정도 나옵니다.
-- 체형 유형(모래시계형 등)을 말하지 마세요. 계측 오차에 쉽게 뒤집힙니다.
-- "꽉 낌" 을 "다소 낍니다" 처럼 완화하지 마세요. 화면은 "착용이 어렵습니다" 로
-  표시하므로 같은 상태를 다르게 말하게 됩니다. 대신 추천 사이즈를 안내하세요.
-- 미리보기가 없다는 것과 못 입는다는 것은 다릅니다. 미리보기가 없어도
-  판정은 있습니다."""
-
-ONBOARDING_INSTRUCTION = """
-[지금 상태]
-아직 아바타가 없어 사용자의 치수를 모릅니다. 치수나 사이즈를 묻는 질문에는
-"사진을 올려 아바타를 먼저 만들어주세요" 로 안내하세요. 치수를 추측하지 마세요.
-서비스 설명과 촬영 안내까지만 답합니다."""
+if not GARMENT_PROMPT:
+    raise RuntimeError(f"{_PROMPT_PATH.name} 이 비어 있습니다")
 
 
 def _profile_block(profile: Optional[Profile]) -> str:
@@ -174,14 +157,14 @@ def _fit_context_block(context: FitContext) -> str:
 
 def build_system_prompt(request: ChatRequest) -> str:
     """세 덩어리를 이어 붙입니다."""
-    blocks = [BASE_INSTRUCTION]
-
-    if GARMENT_KNOWLEDGE.strip():
-        blocks.append("\n[의류 지식]\n" + GARMENT_KNOWLEDGE.strip())
+    blocks = [GARMENT_PROMPT]
 
     context = request.fit_context
     if request.mode == "onboarding" or context is None:
-        blocks.append(ONBOARDING_INSTRUCTION)
+        # 규칙 본문에 onboarding 절이 있습니다. 여기서는 지금이 그 상태라는
+        # 것만 알립니다. fit_context 를 빈 값으로 넣으면 모델이 0 을 수치로
+        # 읽어 없는 치수를 말하게 됩니다.
+        blocks.append("\n[지금 상태]\nmode 는 onboarding 입니다. 치수와 판정 결과가 없습니다.")
         return "\n".join(blocks)
 
     blocks.append(_profile_block(context.profile))

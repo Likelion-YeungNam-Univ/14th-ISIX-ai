@@ -31,7 +31,7 @@ class TestAlwaysPresent:
     def test_forbids_color_talk(self):
         # 잘 맞는 옷도 빨강이 29% 나옵니다. 색으로는 사이즈를 가릴 수 없습니다.
         prompt = build_system_prompt(fitting())
-        assert "색으로 사이즈를 말하지" in prompt
+        assert "색을 근거로 사이즈를 말하지 마십시오" in prompt
 
     def test_forbids_body_type_talk(self):
         # 격자 12구간 전부가 ±4cm 오차에 30% 이상 타입이 바뀝니다.
@@ -39,7 +39,7 @@ class TestAlwaysPresent:
 
     def test_forbids_softening_tight(self):
         # 화면은 "착용이 어렵습니다" 로 표시합니다. 챗봇이 "다소" 라고 하면 어긋납니다.
-        assert "다소 낍니다" in build_system_prompt(fitting())
+        assert '"다소 낍니다" 처럼 완화하지 마십시오' in build_system_prompt(fitting())
 
     def test_states_comparison_threshold(self):
         # 0.3cm 차이를 "더 여유" 라고 하면 계측 오차보다 작은 값을 근거로 삼습니다.
@@ -53,14 +53,14 @@ class TestOnboarding:
     def test_has_no_measurements_block(self):
         prompt = build_system_prompt(ChatRequest(mode="onboarding", message="어떻게 써요?"))
 
-        assert "아바타를 먼저 만들어주세요" in prompt
+        assert "먼저 아바타를 만들어 달라고 안내" in prompt
         assert "[지금 보고 있는 옷]" not in prompt
 
     def test_fitting_without_context_falls_back_to_onboarding(self):
         # 라우터가 막지만, 프롬프트도 치수를 지어내지 않아야 합니다.
         prompt = build_system_prompt(ChatRequest(mode="fitting", message="맞나요?"))
 
-        assert "치수를 추측하지 마세요" in prompt
+        assert "없는 수치를 지어내지 말고" in prompt
 
 
 class TestPersonalization:
@@ -72,12 +72,14 @@ class TestPersonalization:
         assert "[지금 보고 있는 옷]" in prompt
 
     def test_profile_uses_korean_part_labels(self):
-        # 프롬프트에는 사람이 읽는 말로, 판정 근거는 영문 키로 받습니다.
+        # 프롬프트에는 사람이 읽는 말로 넣습니다. 규칙 본문에는 영문 키가
+        # 나오지만(모델이 fit_report 와 연결해야 함), 주입되는 값은 한글입니다.
         prompt = build_system_prompt(
             fitting(profile={"용도": "출근", "신경쓰는부위": ["shoulder_width"]}))
+        block = prompt.split("[지난 대화에서 알게 된 것]")[1].split("[지금 보고 있는 옷]")[0]
 
-        assert "신경 쓰는 부위: 어깨" in prompt
-        assert "shoulder_width" not in prompt.split("[지금 보고 있는 옷]")[0]
+        assert "신경 쓰는 부위: 어깨" in block
+        assert "shoulder_width" not in block
 
     def test_profile_tells_to_quote_once(self):
         prompt = build_system_prompt(
@@ -135,3 +137,34 @@ class TestFitContext:
 
         assert "어깨 45.6cm" in prompt
         assert "가슴 85.3cm" in prompt
+
+
+class TestGarmentRules:
+    """의류 파트 초안에서 온 규칙. 파일이 갈아치워져도 빠지면 안 되는 것들입니다."""
+
+    def test_forbids_self_calculation(self):
+        # AI 가 자체 계산하면 화면 리포트와 답변이 다른 값을 말할 수 있습니다.
+        assert "수치를 직접 계산하지 마십시오" in build_system_prompt(fitting())
+
+    def test_lists_judged_parts_per_garment(self):
+        # 셔츠 상담에서 허리를 말하면 근거 수치가 없습니다.
+        prompt = build_system_prompt(fitting())
+        assert "셔츠 상담에서 허리를 언급하지 마십시오" in prompt
+
+    def test_shoulder_uses_deviation_only(self):
+        # 어깨는 정상 착용에도 actual_ease 가 -8cm 안팎입니다.
+        assert "어깨는 어떤 경우에도" in build_system_prompt(fitting())
+
+    def test_too_small_is_preview_wording(self):
+        # 8/14 개정 — 3건 중 1건은 옷이 오히려 큽니다.
+        prompt = build_system_prompt(fitting())
+        assert "이 사이즈는 3D 미리보기가 없습니다" in prompt
+        assert "옷이 작아 착용이 어렵습니다" not in prompt
+
+    def test_overfit_multi_size_answer_exists(self):
+        # shirt_over 는 12버킷 중 9개에서 두세 사이즈가 동시에 적정입니다.
+        assert "아무거나 사도 되나요" in build_system_prompt(fitting())
+
+    def test_forbids_list_markup_in_answer(self):
+        # 음성으로 읽히므로 목록 기호를 읽을 수 없습니다.
+        assert "목록·표·머리글 기호를 쓰지 마십시오" in build_system_prompt(fitting())
