@@ -19,6 +19,9 @@ Role = Literal["user", "assistant"]
 # 발화 한 번 분량입니다. 음성 입력이라 이보다 길면 STT 가 문장을 잘라 보냅니다.
 MAX_MESSAGE_LEN = 500
 
+# 요약의 "피하는것" 길이 상한. 문장이 길어지면 요약이 자유 서술로 변합니다.
+MAX_PROFILE_AVOID_LEN = 20
+
 # 판정 대상 부위. profile 의 신경쓰는부위도 같은 키를 씁니다.
 # 한글 라벨("어깨")로 두면 프롬프트가 fit_report 의 shoulder_width 와
 # 연결하지 못해 "어깨 여유가 2cm" 같은 문장을 만들 수 없습니다.
@@ -54,7 +57,7 @@ class Profile(BaseModel):
     용도: Optional[Literal["출근", "데이트", "운동", "일상"]] = None
     신경쓰는부위: list[Part] = Field(default_factory=list)
     선호핏: Optional[Literal["슬림", "레귤러", "오버핏"]] = None
-    피하는것: Optional[str] = Field(None, max_length=20)
+    피하는것: Optional[str] = Field(None, max_length=MAX_PROFILE_AVOID_LEN)
 
 
 class PastFitting(BaseModel):

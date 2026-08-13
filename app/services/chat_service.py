@@ -16,7 +16,7 @@ from typing import AsyncIterator
 
 from app.core.config import settings
 from app.models.chat import ChatRequest
-from app.services import chat_prompt
+from app.services import chat_prompt, chat_summary
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,7 @@ async def _openai_events(request: ChatRequest) -> AsyncIterator[str]:
     )
 
     sent = 0
+    answer: list[str] = []
     try:
         async for chunk in stream:
             if not chunk.choices:
@@ -94,6 +95,7 @@ async def _openai_events(request: ChatRequest) -> AsyncIterator[str]:
             if not delta:
                 continue
             sent += 1
+            answer.append(delta)
             yield sse({"delta": delta})
     except Exception:
         logger.exception("OpenAI 스트리밍이 중단되었습니다 (보낸 조각 %d개)", sent)
@@ -105,7 +107,31 @@ async def _openai_events(request: ChatRequest) -> AsyncIterator[str]:
         })
         return
 
-    yield sse({"done": True})
+    yield sse(await _done_payload(request, "".join(answer)))
+
+
+async def _done_payload(request: ChatRequest, answer: str) -> dict:
+    """마지막 이벤트. 대화 요약을 함께 실어 보냅니다.
+
+    요약을 여기서 만드는 이유는 지연이 보이지 않기 때문입니다. 답변은 이미
+    화면에 다 떴고 마지막 문장 TTS 가 재생 중이라, 1초쯤 걸려도 사용자는
+    모릅니다. 백그라운드로 돌리면 실패해도 아무에게도 안 보입니다.
+
+    onboarding 은 요약하지 않습니다. 치수도 취향도 아직 나오지 않은 단계라
+    뽑을 것이 없고, 호출만 낭비됩니다.
+    """
+    payload: dict = {"done": True}
+
+    if request.mode == "onboarding":
+        return payload
+
+    history = [{"role": turn.role, "content": turn.content} for turn in request.history]
+    summary = await chat_summary.extract(history, request.message, answer)
+    if summary is not None:
+        # 백엔드만 소비합니다. 프론트로 넘기지 않습니다.
+        payload["summary"] = summary
+
+    return payload
 
 
 async def open_stream(request: ChatRequest) -> tuple[str, AsyncIterator[str]]:
