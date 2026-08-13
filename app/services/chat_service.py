@@ -16,19 +16,12 @@ from typing import AsyncIterator
 
 from app.core.config import settings
 from app.models.chat import ChatRequest
+from app.services import chat_prompt
 
 logger = logging.getLogger(__name__)
 
 # 폭주 방지 상한입니다. 길이 제어 수단이 아닙니다 — 길이는 프롬프트로 잡습니다.
 MAX_TOKENS = 300
-
-# 프롬프트 3부 조립은 별건입니다. 여기는 자리만 잡아둡니다.
-# 의류 지식과 발화 규칙, fit_context · profile 풀어쓰기가 들어올 곳입니다.
-_SYSTEM_PROMPT = (
-    "당신은 의류 사이즈를 상담하는 한국어 도우미입니다.\n"
-    "2~3문장, 120자 이내로 답하세요. 음성으로 읽히므로 길면 듣기 어렵습니다.\n"
-    "받은 수치만 인용하고 없는 수치는 만들지 마세요."
-)
 
 # 키가 없을 때 흘리는 고정 응답.
 # 문장 부호로 끊어 두어 프론트의 문장 단위 TTS 큐를 시험할 수 있게 합니다.
@@ -54,10 +47,10 @@ def sse(payload: dict) -> str:
 def build_messages(request: ChatRequest) -> list[dict]:
     """OpenAI 에 보낼 메시지 목록.
 
-    프롬프트 3부 조립에서 fit_context · profile 을 시스템 프롬프트로 풀어
-    넣습니다. 지금은 대화만 넘깁니다.
+    시스템 프롬프트는 고정 지시 + 개인화 + 근거 세 덩어리로 조립합니다
+    (:mod:`app.services.chat_prompt`).
     """
-    messages = [{"role": "system", "content": _SYSTEM_PROMPT}]
+    messages = [{"role": "system", "content": chat_prompt.build_system_prompt(request)}]
     messages += [{"role": turn.role, "content": turn.content} for turn in request.history]
     messages.append({"role": "user", "content": request.message})
     return messages
