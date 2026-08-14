@@ -46,7 +46,13 @@ class TestAlwaysPresent:
         assert "1cm 미만" in build_system_prompt(fitting())
 
     def test_states_priority_order(self):
-        assert "뒤에서부터" in build_system_prompt(fitting())
+        # v5 — "뒤에서 빼기" 에서 "앞에서 쌓기" 로 바뀌었습니다. 다 쓴 뒤 줄이면
+        # 먼저 쓴 것이 남고 판정 수치가 밀려 나갑니다.
+        prompt = build_system_prompt(fitting())
+
+        assert "앞에서 쌓" in prompt
+        assert "수치가 하나도 없는 답변은 실패" in prompt
+        assert "판정 부위를 전부" in prompt
 
 
 class TestOnboarding:
