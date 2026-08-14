@@ -102,6 +102,12 @@ jobs:
                 echo "경고: .env 의 R2 설정이 6줄이 아닙니다. GLB 가 로컬 주소로 나갑니다."
             fi
 
+            # 키가 없으면 챗 엔드포인트만 조용히 꺼집니다. 아바타 생성은 정상이라
+            # /health 검사를 통과하고, 배포는 초록불로 끝납니다. 그래서 따로 봅니다.
+            if ! grep -q '^OPENAI_API_KEY=.\+' .env; then
+                echo "경고: .env 에 OPENAI_API_KEY 가 없습니다. 챗봇이 동작하지 않습니다."
+            fi
+
             echo "배포 완료 (HTTP $CODE)"
 
       - name: PR에 검사 완료 댓글 남기기
