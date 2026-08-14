@@ -1,0 +1,12 @@
+# 테스트용. requirements.txt 를 -r 로 끌어오지 않습니다.
+#
+# 운영 의존성에 torch(약 800MB)와 mediapipe 가 있어 CI 에서 설치에만 수 분이
+# 걸립니다. 챗 경로는 그 모델을 쓰지 않으므로 필요한 것만 나열합니다.
+# 아바타 파이프라인을 테스트하려면 requirements.txt 를 함께 설치하세요.
+fastapi==0.115.0
+pydantic==2.9.2
+pydantic-settings==2.5.2
+openai==2.54.0
+httpx==0.27.2
+pytest==8.3.3
+pytest-asyncio==0.24.0
