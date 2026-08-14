@@ -20,7 +20,7 @@ from app.core.exceptions import (
     unhandled_exception_handler,
 )
 from app.core.response import ApiResponse
-from app.routers import avatar, fitting
+from app.routers import avatar, chat, fitting
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger(__name__)
@@ -78,6 +78,7 @@ app.add_exception_handler(ClosrException, closr_exception_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
 app.include_router(avatar.router)
+app.include_router(chat.router)
 app.include_router(fitting.router)
 
 # 생성된 GLB 서빙. 운영에서는 CDN 으로 옮기고 이 마운트를 제거하세요.

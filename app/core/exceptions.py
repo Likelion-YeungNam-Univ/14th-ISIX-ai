@@ -31,6 +31,14 @@ class ErrorCode(Enum):
     AVATAR_NOT_READY = (409, "아바타 생성이 아직 끝나지 않았습니다. 잠시 후 다시 시도해주세요")
     FITTING_NOT_AVAILABLE = (404, "해당 조합은 준비 중입니다. 다른 사이즈를 선택해주세요")
 
+    # 챗봇
+    # mode=fitting 인데 fit_context 가 없는 경우입니다. 치수 없이 사이즈를
+    # 답하게 하면 없는 수치를 지어냅니다.
+    CHAT_CONTEXT_REQUIRED = (400, "치수 정보가 없어 사이즈를 안내할 수 없습니다")
+    # 스트림을 열기 전에 실패한 경우입니다. 연 뒤에 끊기면 상태 코드를 바꿀 수
+    # 없어 스트림 안의 error 이벤트로 내려갑니다. 코드 이름은 같습니다.
+    CHAT_UPSTREAM_ERROR = (502, "챗봇 서버 응답에 실패했습니다")
+
     # 서버
     INTERNAL_ERROR = (500, "처리 중 오류가 발생했습니다")
 

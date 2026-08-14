@@ -33,6 +33,13 @@ jobs:
       - name: 문법 검사
         run: python -m compileall -q app
 
+      # 운영 의존성(torch 약 800MB · mediapipe)은 설치하지 않습니다. 챗 경로는
+      # 그 모델을 쓰지 않아, 가벼운 목록만 깔면 20초 안에 끝납니다.
+      - name: 테스트
+        run: |
+          pip install -q -r requirements-dev.txt
+          pytest tests -q
+
       - name: EC2 배포
         if: github.event_name == 'push'
         uses: appleboy/ssh-action@v1.0.3
