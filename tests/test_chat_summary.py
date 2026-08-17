@@ -51,6 +51,42 @@ class TestParse:
     def test_rejects_array_at_root(self):
         assert _parse('[{"용도": "출근"}]') is None
 
+    def test_reads_the_string_null_as_empty(self):
+        # 운영에서 실제로 나온 응답입니다. 지시문에 null 이라 적어 두었더니
+        # 모델이 JSON null 대신 문자열 "null" 을 보냈습니다. 그대로 검증에
+        # 넘기면 선호핏이 목록에 없는 값이라 요약 4항목이 전부 폐기됩니다.
+        # 같은 모델이 어떤 턴은 제대로 보내서 간헐적으로만 사라졌습니다.
+        raw = json.dumps({"용도": "출근", "신경쓰는부위": ["shoulder_width"],
+                          "선호핏": "null", "피하는것": "null"}, ensure_ascii=False)
+
+        assert _parse(raw) == {"용도": "출근", "신경쓰는부위": ["shoulder_width"],
+                               "선호핏": None, "피하는것": None}
+
+    def test_does_not_store_null_as_a_preference(self):
+        # 피하는것 은 20자 이내 문자열이면 검증을 통과합니다. "null" 을 그대로
+        # 두면 다음 대화 프롬프트에 "피하는 것: null" 이 주입됩니다. 선호핏과
+        # 달리 예외가 안 나서, 조용히 없는 취향이 생깁니다.
+        #
+        # 전부 비면 extract 가 저장하지 않습니다. 여기서는 값이 비워졌는지만 봅니다.
+        assert _parse('{"피하는것": "null"}')["피하는것"] is None
+
+    @pytest.mark.parametrize("empty", ["없음", "N/A", "NONE", "-", " "])
+    def test_reads_other_empty_markers(self, empty):
+        raw = json.dumps({"용도": "출근", "선호핏": empty}, ensure_ascii=False)
+
+        assert _parse(raw)["선호핏"] is None
+
+    def test_drops_empty_markers_inside_the_array(self):
+        # 신경쓰는부위 에 ["null"] 로 오면 부위 키가 아니라 예외가 됩니다.
+        raw = json.dumps({"용도": "출근", "신경쓰는부위": ["null", "chest_circ"]},
+                         ensure_ascii=False)
+
+        assert _parse(raw)["신경쓰는부위"] == ["chest_circ"]
+
+    def test_still_rejects_a_real_value_outside_the_list(self):
+        # 비었다는 표시만 비워 줍니다. 없는 값을 만들어 통과시키지는 않습니다.
+        assert _parse('{"선호핏": "빅사이즈"}') is None
+
 
 class TestTranscript:
     def test_includes_last_turn(self):

@@ -69,10 +69,53 @@ def _parse(raw: str) -> Optional[dict]:
 
     try:
         # Profile 이 값 목록까지 검사합니다. 목록에 없는 값이면 여기서 걸립니다.
-        return Profile(**parsed).model_dump()
+        return Profile(**_nulls(parsed)).model_dump()
     except Exception:
         logger.warning("요약 항목이 규격에 맞지 않습니다: %s", text[:200])
         return None
+
+
+# 모델이 "비었다" 를 표현하는 방식들. 지시문에 null 이라 적어 두면 그것을
+# 문자열로 그대로 적어 보내는 경우가 있습니다.
+_EMPTY = {"null", "none", "nan", "n/a", "없음", "미정", "-", ""}
+
+
+def _nulls(parsed: dict) -> dict:
+    """비었다는 뜻의 문자열을 진짜 ``None`` 으로 바꿉니다.
+
+    **간헐적으로 요약이 통째로 사라지던 원인입니다.** 지시문이 ``null`` 을
+    쓰라고 적어 두었더니 모델이 JSON ``null`` 대신 문자열 ``"null"`` 을 보낼
+    때가 있습니다. 같은 모델이 어떤 턴은 제대로, 어떤 턴은 문자열로 보냅니다.
+
+    그대로 검증에 넘기면 두 가지로 갈립니다. 어느 쪽도 조용합니다.
+
+        선호핏 "null"    목록에 없는 값이라 예외 → 요약 4항목 전부 폐기
+        피하는것 "null"  20자 이내 문자열이라 통과 → 다음 프롬프트에
+                        "피하는 것: null" 이 그대로 주입
+
+    앞쪽은 개인화가 사라지고 뒤쪽은 없는 취향이 생깁니다. 답변 자체는 정상이라
+    화면에서는 드러나지 않고, 다음 턴에 기억을 못 하는 형태로만 보입니다.
+
+    값을 만들어 내지는 않습니다. 비었다는 표시를 비었다고 읽을 뿐입니다.
+    """
+    cleaned = {}
+    for key, value in parsed.items():
+        if isinstance(value, str) and value.strip().lower() in _EMPTY:
+            cleaned[key] = None
+        elif isinstance(value, list):
+            # 신경쓰는부위 에 ["null"] 로 오는 경우도 같이 걸러냅니다.
+            cleaned[key] = [
+                item for item in value
+                if not (isinstance(item, str) and item.strip().lower() in _EMPTY)
+            ]
+        else:
+            cleaned[key] = value
+
+    # 배열 항목에 None 이 오면 Profile 이 거부합니다. 리스트가 아예 없는 것과
+    # 같게 취급합니다.
+    if cleaned.get("신경쓰는부위") is None:
+        cleaned["신경쓰는부위"] = []
+    return cleaned
 
 
 async def extract(history: list[dict], message: str, answer: str) -> Optional[dict]:
