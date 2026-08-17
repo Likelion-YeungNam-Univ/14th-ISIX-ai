@@ -23,18 +23,26 @@ logger = logging.getLogger(__name__)
 # 요약은 짧습니다. 넉넉히 줘도 4항목이면 100토큰을 넘지 않습니다.
 MAX_TOKENS = 200
 
+# **근거가 없으면 키를 아예 빼라고 합니다.** null 을 넣으라고 하면 모델이 JSON
+# null 대신 문자열 "null" 을 보낼 때가 있고, 그러면 항목마다 다르게, 그리고
+# 둘 다 조용히 실패합니다(#23). 키 생략은 타입 구분보다 훨씬 안정적입니다.
+# Profile 네 항목 모두 기본값이 있어 빠진 키는 그대로 빈 값이 됩니다.
 _INSTRUCTION = f"""대화에서 아래 네 항목만 뽑아 JSON 으로 답하세요.
 
-- 용도: 출근 | 데이트 | 운동 | 일상 | null
-- 신경쓰는부위: shoulder_width | chest_circ | waist_circ | hip_circ 의 배열. 없으면 []
-- 선호핏: 슬림 | 레귤러 | 오버핏 | null
-- 피하는것: {MAX_PROFILE_AVOID_LEN}자 이내 문자열 | null
+- 용도: 출근 | 데이트 | 운동 | 일상
+- 신경쓰는부위: shoulder_width | chest_circ | waist_circ | hip_circ 의 배열
+- 선호핏: 슬림 | 레귤러 | 오버핏
+- 피하는것: {MAX_PROFILE_AVOID_LEN}자 이내 문자열
 
 규칙
 - 사용자가 직접 말한 것만 담으세요. 추측하지 마세요.
-- 근거가 없으면 null 이나 [] 로 두세요. 비워 두는 것이 틀린 값보다 낫습니다.
+- **근거가 없는 항목은 키를 아예 넣지 마세요.** null 이나 "null" 을 쓰지 마세요.
+  네 항목 다 근거가 없으면 {{}} 를 출력하세요.
 - 목록에 없는 값을 만들지 마세요.
-- JSON 만 출력하세요. 설명을 붙이지 마세요."""
+- JSON 만 출력하세요. 설명을 붙이지 마세요.
+
+예) 출근용을 찾고 어깨가 신경 쓰인다고만 말한 경우
+{{"용도": "출근", "신경쓰는부위": ["shoulder_width"]}}"""
 
 
 def _transcript(history: list[dict], message: str, answer: str) -> str:

@@ -87,6 +87,33 @@ class TestParse:
         # 비었다는 표시만 비워 줍니다. 없는 값을 만들어 통과시키지는 않습니다.
         assert _parse('{"선호핏": "빅사이즈"}') is None
 
+    def test_accepts_omitted_keys(self):
+        # 지시문이 "근거가 없으면 키를 빼라" 로 바뀌었습니다. 모델은 키 생략을
+        # 잘하는데 타입 구분은 자주 틀립니다 — null 을 쓰라고 하면 문자열
+        # "null" 이 옵니다. 빠진 키는 Profile 기본값으로 채워집니다.
+        assert _parse('{"용도": "출근", "신경쓰는부위": ["shoulder_width"]}') == {
+            "용도": "출근", "신경쓰는부위": ["shoulder_width"],
+            "선호핏": None, "피하는것": None}
+
+    def test_accepts_empty_object(self):
+        # 네 항목 다 근거가 없는 경우입니다. extract 가 저장하지 않습니다.
+        assert _parse("{}") == {
+            "용도": None, "신경쓰는부위": [], "선호핏": None, "피하는것": None}
+
+
+class TestInstruction:
+    def test_tells_the_model_to_omit_keys(self):
+        # null 을 쓰라고 되돌아가면 #23 이 재발합니다. 문구를 고정합니다.
+        assert "키를 아예 넣지 마세요" in chat_summary._INSTRUCTION
+        assert "null 이나 \"null\" 을 쓰지 마세요" in chat_summary._INSTRUCTION
+
+    def test_lists_no_null_as_an_allowed_value(self):
+        # 값 목록에 null 이 남아 있으면 모델이 그것을 따라 씁니다.
+        lines = [line for line in chat_summary._INSTRUCTION.splitlines()
+                 if line.startswith("- 용도") or line.startswith("- 선호핏")]
+        assert lines
+        assert all("null" not in line for line in lines)
+
 
 class TestTranscript:
     def test_includes_last_turn(self):
