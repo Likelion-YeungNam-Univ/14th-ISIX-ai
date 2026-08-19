@@ -53,8 +53,31 @@ if not GARMENT_PROMPT:
     raise RuntimeError(f"{_PROMPT_PATH.name} 이 비어 있습니다")
 
 
-def _profile_block(profile: Optional[Profile]) -> str:
-    """이전 대화 요약. 첫 대화면 빈 문자열입니다."""
+def _topic(noun: str) -> str:
+    """주제 조사. 받침이 있으면 "은", 없으면 "는" 입니다.
+
+    한쪽으로 고정하면 부위 넷 중 하나는 반드시 틀립니다 — 가슴은 · 어깨는.
+    """
+    if not noun:
+        return "는"
+    last = noun[-1]
+    if not ("가" <= last <= "힣"):
+        return "는"
+    return "은" if (ord(last) - 0xAC00) % 28 else "는"
+
+
+def _profile_block(profile: Optional[Profile], judged: set[str]) -> str:
+    """이전 대화 요약. 첫 대화면 빈 문자열입니다.
+
+    ``judged`` 는 이번 옷에서 실제로 판정한 부위입니다. **거기에 없는 부위를
+    사용자가 신경 쓴다고 적어 두면 모델이 그 부위의 판정을 지어냅니다.**
+    어깨가 신경 쓰인다고 말한 사용자가 슬랙스를 고르면 판정에는 허리만 있는데
+    "어깨는 잘 맞습니다" 를 덧붙이는 식입니다.
+
+    그래서 판정에 없는 부위는 말하지 말라고 못박습니다. 항목 자체를 지우지는
+    않습니다 — 용도나 선호 핏은 그대로 쓸 수 있고, 부위도 사용자가 직접 물으면
+    답해야 합니다.
+    """
     if profile is None:
         return ""
 
@@ -72,9 +95,20 @@ def _profile_block(profile: Optional[Profile]) -> str:
     if not lines:
         return ""
 
+    unjudged = [PART_LABELS.get(p, p) for p in profile.신경쓰는부위 if p not in judged]
+    if unjudged:
+        listed = " · ".join(unjudged)
+        warning = (
+            f"\n{listed}{_topic(listed)} 이번 옷의 판정에 없습니다. "
+            "그 부위가 맞는지 여부를 말하지 마십시오."
+        )
+    else:
+        warning = ""
+
     return (
         "\n[지난 대화에서 알게 된 것]\n"
         + "\n".join(lines)
+        + warning
         + "\n이 중 하나만 골라 한 번 인용하세요. 두 개를 다 인용하면 말투가 부자연스러워집니다."
     )
 
@@ -181,7 +215,8 @@ def build_system_prompt(request: ChatRequest) -> str:
         blocks.append("\n[지금 상태]\nmode 는 onboarding 입니다. 치수와 판정 결과가 없습니다.")
         return "\n".join(blocks)
 
-    blocks.append(_profile_block(context.profile))
+    judged = {part.part for part in context.fit_report}
+    blocks.append(_profile_block(context.profile, judged))
     blocks.append(_fit_context_block(context))
     blocks.append(_past_fittings_block(
         context.past_fittings, has_garment=bool(context.garment_id)))

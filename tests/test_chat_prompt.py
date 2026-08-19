@@ -247,3 +247,52 @@ class TestNoGarmentSelected:
         assert "지금 옷과 수치 차이가 1cm 이상일 때만 비교하세요" in prompt
         assert "아직 옷을 고르지 않았습니다" not in prompt
 
+
+class TestProfilePartNotJudged:
+    """profile 의 부위가 이번 옷 판정에 없는 경우.
+
+    QA 에서 나온 "없는 부위를 맞다고 단정" 문제입니다. 어깨가 신경 쓰인다고
+    말한 사용자가 슬랙스를 고르면 판정에는 허리만 있는데, 모델이 profile 을
+    보고 "어깨는 잘 맞습니다" 를 덧붙였습니다.
+
+    시연 대본이 "어깨가 늘 끼어서" 로 시작하므로 하의로 넘어가는 순간 걸립니다.
+    """
+
+    def _request(self, parts, report_part):
+        return ChatRequest(
+            mode="fitting", message="이거 어때요?",
+            fit_context=FitContext(
+                measurements={"waist_circ": 72.0},
+                garment_id="pants_slacks", size="m", fit="레귤러",
+                fit_report=[{"part": report_part, "actual_ease": 8.1,
+                             "ref_ease": 5.2, "deviation": 2.9, "verdict": "good"}],
+                profile={"용도": "출근", "신경쓰는부위": parts},
+            ),
+        )
+
+    def test_warns_when_the_part_is_not_judged(self):
+        prompt = build_system_prompt(self._request(["shoulder_width"], "waist_circ"))
+
+        assert "어깨는 이번 옷의 판정에 없습니다" in prompt
+        assert "맞는지 여부를 말하지 마십시오" in prompt
+
+    def test_no_warning_when_the_part_is_judged(self):
+        # 판정에 있는 부위면 경고가 붙지 않아야 합니다. 항상 붙으면 읽히지 않습니다.
+        prompt = build_system_prompt(self._request(["waist_circ"], "waist_circ"))
+
+        assert "판정에 없습니다" not in prompt
+
+    def test_keeps_the_profile_itself(self):
+        # 항목을 지우지는 않습니다. 용도는 그대로 쓸 수 있습니다.
+        prompt = build_system_prompt(self._request(["shoulder_width"], "waist_circ"))
+
+        assert "용도: 출근" in prompt
+        assert "신경 쓰는 부위: 어깨" in prompt
+
+    def test_attaches_the_right_particle(self):
+        # 한쪽으로 고정하면 부위 넷 중 하나는 반드시 틀립니다.
+        assert "가슴은 이번 옷의 판정에 없습니다" in build_system_prompt(
+            self._request(["chest_circ"], "waist_circ"))
+        assert "어깨는 이번 옷의 판정에 없습니다" in build_system_prompt(
+            self._request(["shoulder_width"], "waist_circ"))
+
