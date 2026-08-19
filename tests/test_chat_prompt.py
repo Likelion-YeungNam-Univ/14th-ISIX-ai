@@ -214,6 +214,14 @@ class TestNoGarmentSelected:
         assert "아직 옷을 고르지 않았습니다" in prompt
         assert "옷에 대한 판정을 말하지 마십시오" in prompt
 
+    def test_points_at_the_screen_not_at_the_user(self):
+        # "어떤 옷인지 말씀해 주시면" 처럼 답한 사례가 있었습니다. 옷은 화면에서
+        # 고르는 것이라, 사용자가 이름을 말할 방법이 없습니다.
+        prompt = build_system_prompt(self._request())
+
+        assert "화면에서 옷을 고르시면" in prompt
+        assert "옷 이름을 말해 달라고 하지 마십시오" in prompt
+
     def test_does_not_ask_the_user_to_create_an_avatar(self):
         # 치수가 있는데 "아바타를 만들어 주세요" 라고 답한 사례가 있었습니다.
         # 옷이 없는 것과 아바타가 없는 것은 다른 상태입니다.
