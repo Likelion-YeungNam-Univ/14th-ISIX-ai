@@ -25,7 +25,13 @@ EASE  = {'tshirt_basic': 14, 'shirt_slim': 8, 'shirt_over': 30,
 # H0B3(30.2)처럼 튀는 값이 길이로 새어 들어옵니다. 기준은 각 키의 B2 값입니다.
 HEIGHT_CM     = {'H0': 154, 'H1': 162, 'H2': 170}
 REF_WAISTLINE = {'H0': 35.6, 'H1': 37.1, 'H2': 38.6}   # 각 키의 B2 버킷 값
-GRADED        = {'pants_slacks', 'skirt_pencil', 'dress_basic'}   # 하의 계열만
+# 상의도 키에 걸립니다. tee.py 가 길이를 waist_line 에 비례시키고(34행),
+# 배치를 height - head_l - length - shoulder_incl 로 잡습니다(62행).
+# 마네킹이 162 고정이면 170cm 몸에서 옷이 8cm 아래에 놓여 어깨에 못 걸리고
+# 흘러내립니다. 그러면 관통이 max_body_collisions(35)를 넘어 시뮬이 중단되고
+# 흘러내리던 중간 상태가 그대로 저장됩니다.
+GRADED        = {'pants_slacks', 'skirt_pencil', 'dress_basic',
+                 'tshirt_basic', 'shirt_slim', 'shirt_over'}
 PANTS_LENGTH  = 0.75          # 다리길이 대비 비율. 0.3 이면 무릎 위에서 끝납니다.
 
 # 같은 키라도 사이즈가 커지면 길이도 조금 깁니다. ARKET 여성 사이즈표의

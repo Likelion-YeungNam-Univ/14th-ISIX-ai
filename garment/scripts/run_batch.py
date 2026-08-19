@@ -1,5 +1,19 @@
-import json, re, subprocess, sys, time, shutil
+import json, os, re, subprocess, sys, time, shutil
 from pathlib import Path
+
+# WSL 에서 GPU 를 쓰려면 이 경로가 필요합니다.
+#
+# Warp 는 cuda_util.cpp 에서 dlopen("libcuda.so") 로 드라이버를 엽니다.
+# WSL 의 libcuda.so 는 /usr/lib/wsl/lib 에 있는데 ldconfig 에는 libcuda.so.1
+# 만 등록돼 있어서, 버전 없는 이름으로는 못 찾고 CPU 로 떨어집니다.
+# 조용히 느려질 뿐 오류가 안 나서 알아채기 어렵습니다 (조합당 17초 -> 204초).
+#
+# 환경변수로 넘기면 안 준 사람은 CPU 를 쓰게 되므로 스크립트가 직접 챙깁니다.
+_WSL_LIB = '/usr/lib/wsl/lib'
+if Path(_WSL_LIB).is_dir():
+    _cur = os.environ.get('LD_LIBRARY_PATH', '')
+    if _WSL_LIB not in _cur.split(':'):
+        os.environ['LD_LIBRARY_PATH'] = f'{_WSL_LIB}:{_cur}' if _cur else _WSL_LIB
 
 BODIES = ['H0B0', 'H0B1', 'H0B2', 'H0B3', 'H1B0', 'H1B1', 'H1B2', 'H1B3', 'H2B0', 'H2B1', 'H2B2', 'H2B3']   # body_grid.json 12구간
 # 길이를 늘린 바지는 정점이 7,084 -> 12,336 으로 늘어 시뮬이 느려집니다.
