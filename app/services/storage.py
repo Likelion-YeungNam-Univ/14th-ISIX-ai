@@ -86,3 +86,39 @@ def upload_glb(local_path: Path, key_name: str) -> Optional[str]:
     url = f"{settings.r2_public_url.rstrip('/')}/{key}"
     logger.info("R2 업로드 완료: %s", key)
     return url
+
+
+def upload_to(local_path: Path, key: str) -> Optional[str]:
+    """접두어를 붙이지 않고 지정한 키로 올립니다.
+
+    upload_glb 는 avatars/v1/ 접두어를 강제합니다. 워핑한 옷은
+    avatars/v1/{avatar_id}/{design}_{size}.glb 처럼 아바타별 하위 경로에
+    두어야 해서 키를 그대로 받는 창구가 따로 필요합니다.
+    """
+    if not is_configured():
+        return None
+
+    _get_client().upload_file(
+        str(local_path), settings.r2_bucket, key,
+        ExtraArgs={"ContentType": "model/gltf-binary"},
+    )
+    return f"{settings.r2_public_url.rstrip('/')}/{key}"
+
+
+def download(key: str, local_path: Path) -> bool:
+    """R2 에서 내려받습니다. 없으면 False.
+
+    의류 GLB(garments/v1/...)는 의류 파트가 올린 것이라 이 서버에 파일이
+    없습니다. 워핑하려면 원본이 필요해서 내려받습니다. 내용이 바뀌지 않는
+    파일이므로 호출부에서 캐시해 두면 매번 받지 않아도 됩니다.
+    """
+    if not is_configured():
+        return False
+
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        _get_client().download_file(settings.r2_bucket, key, str(local_path))
+        return True
+    except Exception:
+        logger.warning("R2 내려받기 실패: %s", key)
+        return False

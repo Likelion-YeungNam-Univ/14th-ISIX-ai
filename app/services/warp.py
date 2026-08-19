@@ -42,6 +42,7 @@
 없지만 이 방식은 CPU 로 충분합니다.
 """
 
+import json
 import logging
 from pathlib import Path
 from typing import Optional
@@ -50,7 +51,18 @@ import numpy as np
 import trimesh
 from scipy.spatial import cKDTree
 
+from app.core.config import settings
+from app.services import storage
+
 logger = logging.getLogger(__name__)
+
+# 워핑할 조합. 사전 시뮬이 있는 6종 x 3사이즈입니다.
+DESIGNS = ("tshirt_basic", "shirt_slim", "shirt_over",
+           "dress_basic", "pants_slacks", "skirt_pencil")
+SIZES = ("s", "m", "l")
+
+# 의류 GLB 가 올라가 있는 R2 접두어. 의류 파트가 관리합니다.
+GARMENT_PREFIX = "garments/v1"
 
 # 옷 정점 하나가 참조할 몸 정점 개수.
 K = 8
@@ -136,3 +148,90 @@ def fit_to_avatar(garment_path: Path,
     except Exception:
         logger.warning("워핑 실패: %s", garment_path.name, exc_info=True)
         return None
+
+
+def build_grid_body(bucket: str, body=None) -> trimesh.Trimesh:
+    """격자 대표 체형을 beta 로 다시 만듭니다.
+
+    메시 파일을 배포에 싣지 않는 이유는 .gitignore 가 *.obj / *.glb 를 빼고
+    있고 R2 에도 grid/ 접두어가 없기 때문입니다. body_grid.json 에 beta 와
+    height_cm 이 이미 들어 있어 같은 함수로 다시 만들 수 있습니다.
+    격자 몸이 원래 이 함수로 만들어졌습니다.
+
+    body 를 넘기면 SMPL-X 모델(100MB) 재로딩을 건너뜁니다. 아바타 생성
+    과정에서 이미 올려둔 것을 그대로 넘기십시오.
+
+    ⚠ 재생성이 원본과 같은지는 verify_grid_rebuild 로 한 번 확인하십시오.
+      1mm 만 어긋나도 워핑 결과가 오류 없이 조용히 틀어집니다.
+    """
+    from app.services.pipeline import step3_scale
+
+    grid = json.loads(Path(settings.body_grid_path).read_text(encoding="utf-8"))
+    spec = next(b for b in grid["buckets"] if b["id"] == bucket)
+    mesh, _, _, _ = step3_scale.build(spec["beta"], spec["height_cm"], body=body)
+    return _to_cm(mesh.copy())
+
+
+def verify_grid_rebuild(bucket: str, reference_obj: Path, body=None) -> dict:
+    """재생성한 격자 몸이 시뮬에 쓰인 원본과 같은지 확인합니다.
+
+    운영에서는 쓰지 않습니다. 재생성 방식을 채택하기 전에 한 번 돌려
+    max_cm 이 0 에 가까운지 보기 위한 것입니다. 0.1cm 를 넘으면 워핑
+    기준이 어긋나므로 메시를 R2 에 올리는 쪽으로 가야 합니다.
+
+        from app.services.warp import verify_grid_rebuild
+        verify_grid_rebuild("H2B0", Path("assets/bodies/H2B0.obj"))
+    """
+    rebuilt = build_grid_body(bucket, body=body)
+    original = load_mesh(reference_obj)
+    if len(rebuilt.vertices) != len(original.vertices):
+        return {"bucket": bucket, "ok": False,
+                "reason": "정점 수 불일치 %d vs %d"
+                          % (len(rebuilt.vertices), len(original.vertices))}
+    d = np.linalg.norm(rebuilt.vertices - original.vertices, axis=1)
+    return {"bucket": bucket, "ok": bool(d.max() < 0.1),
+            "mean_cm": round(float(d.mean()), 4),
+            "max_cm": round(float(d.max()), 4)}
+
+
+def fit_all(avatar: trimesh.Trimesh, bucket: str, avatar_id: str,
+            work_dir: Path, body=None) -> dict:
+    """아바타에 맞춘 옷 18벌을 만들어 올리고 {조합: URL} 을 돌려줍니다.
+
+    한 벌이 실패해도 나머지는 올립니다. 호출부와 백엔드는 결과에 없는
+    조합만 기존 garments/v1/ 경로로 폴백하면 됩니다.
+
+    의류 GLB 는 내용이 바뀌지 않으므로 work_dir 아래에 받아 두고 재사용합니다.
+    """
+    grid_mesh = build_grid_body(bucket, body=body)
+    cache = work_dir / "garments"
+    out_dir = work_dir / "fitted" / avatar_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    urls, failed = {}, []
+    for design in DESIGNS:
+        for size in SIZES:
+            name = f"{design}_{size}__{bucket}.glb"
+            src = cache / name
+            if not src.exists() and not storage.download(f"{GARMENT_PREFIX}/{name}", src):
+                failed.append(name)
+                continue
+
+            out = out_dir / f"{design}_{size}.glb"
+            try:
+                fitted, _ = push_out(warp(load_mesh(src), grid_mesh, avatar), avatar)
+                fitted.export(str(out))
+                url = storage.upload_to(
+                    out, f"avatars/v1/{avatar_id}/{design}_{size}.glb")
+                if url:
+                    urls[f"{design}_{size}"] = url
+            except Exception:
+                logger.warning("워핑 실패: %s", name, exc_info=True)
+                failed.append(name)
+
+    if failed:
+        logger.warning("[%s] 워핑 실패 %d건 — 기존 경로로 폴백됩니다: %s",
+                       avatar_id, len(failed), ", ".join(failed[:5]))
+    logger.info("[%s] 워핑 완료 %d/%d", avatar_id, len(urls),
+                len(DESIGNS) * len(SIZES))
+    return urls
