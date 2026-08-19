@@ -4,7 +4,7 @@
 **금지 규칙이 빠지지 않는지**, **부위·사이즈 표기가 규칙대로인지**입니다.
 """
 
-from app.models.chat import ChatRequest
+from app.models.chat import ChatRequest, FitContext
 from app.services.chat_prompt import build_system_prompt
 
 FIT_REPORT = [
@@ -174,3 +174,76 @@ class TestGarmentRules:
     def test_forbids_list_markup_in_answer(self):
         # 음성으로 읽히므로 목록 기호를 읽을 수 없습니다.
         assert "목록·표·머리글 기호를 쓰지 마십시오" in build_system_prompt(fitting())
+
+
+class TestNoGarmentSelected:
+    """옷을 고르지 않은 상태.
+
+    피팅룸에 들어왔지만 아직 옷을 안 고른 화면입니다. 이 상태에서 챗봇이
+    **없는 옷을 설명하거나 지난 옷과 비교하던 문제**를 막습니다.
+
+    원인은 프롬프트가 이행 불가능한 지시를 남겨 둔 것이었습니다. 머리말이
+    "[지금 보고 있는 옷]" 인데 옷 정보가 없고, 지난 피팅 블록은 "지금 옷과
+    비교하세요" 라고 했습니다. 지시를 못 지키게 되면 모델은 지시를 버리는
+    대신 전제를 만들어 냅니다 — 지난 옷을 지금 옷처럼 말했습니다.
+    """
+
+    def _request(self, past=True):
+        return ChatRequest(
+            mode="fitting",
+            message="이거 어때요?",
+            fit_context=FitContext(
+                measurements={"shoulder_width": 45.5, "chest_circ": 92.0},
+                garment_id=None,
+                profile={"용도": "출근"},
+                past_fittings=[{"garment_id": "shirt_slim", "size": "m",
+                                "wearable": False,
+                                "tight_parts": ["shoulder_width"]}] if past else [],
+            ),
+        )
+
+    def test_does_not_claim_a_garment_is_being_viewed(self):
+        prompt = build_system_prompt(self._request())
+
+        assert "[지금 보고 있는 옷]" not in prompt
+        assert "[사용자 치수]" in prompt
+
+    def test_tells_the_model_no_garment_is_chosen(self):
+        prompt = build_system_prompt(self._request())
+
+        assert "아직 옷을 고르지 않았습니다" in prompt
+        assert "옷에 대한 판정을 말하지 마십시오" in prompt
+
+    def test_does_not_ask_to_compare_with_a_garment_that_is_not_there(self):
+        # "지금 옷과 비교하세요" 가 남아 있으면 모델이 비교 대상을 만들어 냅니다.
+        prompt = build_system_prompt(self._request())
+
+        assert "지금 옷과 수치 차이" not in prompt
+        assert "지금 고른 옷이 없습니다" in prompt
+
+    def test_still_sends_measurements(self):
+        # 치수는 남아야 합니다. 사용자가 "제 어깨 몇이에요?" 를 물을 수 있습니다.
+        prompt = build_system_prompt(self._request())
+
+        assert "어깨 45.5cm" in prompt
+
+    def test_garment_selected_keeps_the_original_wording(self):
+        # 옷이 있을 때는 기존 동작이 그대로여야 합니다.
+        request = ChatRequest(
+            mode="fitting", message="이거 어때요?",
+            fit_context=FitContext(
+                measurements={"chest_circ": 92.0},
+                garment_id="shirt_over", size="m", fit="오버핏",
+                fit_report=[{"part": "chest_circ", "actual_ease": 32.0,
+                             "ref_ease": 30.0, "deviation": 2.0, "verdict": "good"}],
+                past_fittings=[{"garment_id": "shirt_slim", "size": "m",
+                                "wearable": False, "tight_parts": []}],
+            ),
+        )
+
+        prompt = build_system_prompt(request)
+
+        assert "[지금 보고 있는 옷]" in prompt
+        assert "지금 옷과 수치 차이가 1cm 이상일 때만 비교하세요" in prompt
+        assert "아직 옷을 고르지 않았습니다" not in prompt
+

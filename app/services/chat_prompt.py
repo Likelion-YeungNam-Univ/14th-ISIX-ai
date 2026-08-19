@@ -79,8 +79,13 @@ def _profile_block(profile: Optional[Profile]) -> str:
     )
 
 
-def _past_fittings_block(past: list[PastFitting]) -> str:
-    """지난 피팅. 비교 발화의 근거입니다."""
+def _past_fittings_block(past: list[PastFitting], has_garment: bool) -> str:
+    """지난 피팅. 비교 발화의 근거입니다.
+
+    **비교할 대상이 있을 때만 비교를 지시합니다.** 옷을 고르지 않은 상태에서
+    "지금 옷과 비교하세요" 를 남겨 두면 모델이 지난 옷을 지금 옷처럼 말합니다.
+    지시가 이행 불가능하면 모델은 지시를 버리는 대신 전제를 만들어 냅니다.
+    """
     if not past:
         return ""
 
@@ -90,11 +95,13 @@ def _past_fittings_block(past: list[PastFitting]) -> str:
         state = f"{tight} 꽉 낌" if tight else "전 부위 적정"
         lines.append(f"- {fitting.garment_id} {fitting.size.upper()}: {state}")
 
-    return (
-        "\n[지난번에 본 옷]\n"
-        + "\n".join(lines)
-        + "\n지금 옷과 수치 차이가 1cm 이상일 때만 비교하세요."
+    closing = (
+        "\n지금 옷과 수치 차이가 1cm 이상일 때만 비교하세요."
+        if has_garment
+        else "\n지금 고른 옷이 없습니다. 먼저 꺼내 말하지 마시고, "
+             "사용자가 그 옷을 물었을 때만 답하세요."
     )
+    return "\n[지난번에 본 옷]\n" + "\n".join(lines) + closing
 
 
 def _fit_report_block(context: FitContext) -> str:
@@ -114,7 +121,14 @@ def _fit_report_block(context: FitContext) -> str:
 
 def _fit_context_block(context: FitContext) -> str:
     """치수와 판정. 답변의 본체입니다."""
-    lines = ["\n[지금 보고 있는 옷]"]
+    # 옷이 없는데 "[지금 보고 있는 옷]" 을 붙이면 모델이 있다고 믿고 설명합니다.
+    # 그러면 지난 피팅이나 예시의 옷을 현재 옷처럼 말하게 됩니다.
+    if not context.garment_id:
+        lines = ["\n[사용자 치수]",
+                 "- 아직 옷을 고르지 않았습니다. 옷에 대한 판정을 말하지 마십시오.",
+                 "  옷을 고르면 사이즈를 봐 드린다고 안내하세요."]
+    else:
+        lines = ["\n[지금 보고 있는 옷]"]
 
     if context.garment_id:
         size = (context.size or "").upper()
@@ -169,6 +183,7 @@ def build_system_prompt(request: ChatRequest) -> str:
 
     blocks.append(_profile_block(context.profile))
     blocks.append(_fit_context_block(context))
-    blocks.append(_past_fittings_block(context.past_fittings))
+    blocks.append(_past_fittings_block(
+        context.past_fittings, has_garment=bool(context.garment_id)))
 
     return "\n".join(block for block in blocks if block)
