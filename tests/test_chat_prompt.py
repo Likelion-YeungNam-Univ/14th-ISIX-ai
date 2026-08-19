@@ -214,6 +214,13 @@ class TestNoGarmentSelected:
         assert "아직 옷을 고르지 않았습니다" in prompt
         assert "옷에 대한 판정을 말하지 마십시오" in prompt
 
+    def test_does_not_ask_the_user_to_create_an_avatar(self):
+        # 치수가 있는데 "아바타를 만들어 주세요" 라고 답한 사례가 있었습니다.
+        # 옷이 없는 것과 아바타가 없는 것은 다른 상태입니다.
+        prompt = build_system_prompt(self._request())
+
+        assert "아바타를 만들라거나 측정이 필요하다고 말하지 마십시오" in prompt
+
     def test_does_not_ask_to_compare_with_a_garment_that_is_not_there(self):
         # "지금 옷과 비교하세요" 가 남아 있으면 모델이 비교 대상을 만들어 냅니다.
         prompt = build_system_prompt(self._request())

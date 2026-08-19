@@ -29,6 +29,7 @@
   "tests/test_chat_prompt.py::TestGarmentRules::test_overfit_multi_size_answer_exists",
   "tests/test_chat_prompt.py::TestGarmentRules::test_shoulder_uses_deviation_only",
   "tests/test_chat_prompt.py::TestGarmentRules::test_too_small_is_preview_wording",
+  "tests/test_chat_prompt.py::TestNoGarmentSelected::test_does_not_ask_the_user_to_create_an_avatar",
   "tests/test_chat_prompt.py::TestNoGarmentSelected::test_does_not_ask_to_compare_with_a_garment_that_is_not_there",
   "tests/test_chat_prompt.py::TestNoGarmentSelected::test_does_not_claim_a_garment_is_being_viewed",
   "tests/test_chat_prompt.py::TestNoGarmentSelected::test_garment_selected_keeps_the_original_wording",
