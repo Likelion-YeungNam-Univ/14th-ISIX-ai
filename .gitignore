@@ -20,6 +20,8 @@ validation/
 # 대용량 산출물
 assets/draped/
 assets/grid/
+assets/avatars/
+assets/debug/
 *.glb
 *.obj
 out/
@@ -28,3 +30,12 @@ out/
 .idea/
 .vscode/
 .DS_Store
+
+# 의류 파트 산출물 (R2로 서빙)
+garment/Logs/
+garment/Sim_results/
+garment/glb_out/
+*.obj
+*.glb
+garment/dist/
+*_ease.json

@@ -1,0 +1,142 @@
+{
+  "bias": {
+    "shoulder_width": 0.94296,
+    "hip_width": 0.75809,
+    "torso_length": 1.11878,
+    "upper_arm_len": 1.11335,
+    "forearm_len": 1.00616,
+    "thigh_len": 0.94831,
+    "shank_len": 1.09039,
+    "leg_length": 1.0125,
+    "head_to_shoulder": 1.0143,
+    "neck_width": 1.06811,
+    "shoulder_w_sil": 1.0556,
+    "chest_width": 1.01115,
+    "waist_width": 1.0,
+    "hip_w_sil": 1.04345,
+    "thigh_width": 0.99278,
+    "calf_width": 0.99886,
+    "upper_arm_width": 1.0
+  },
+  "spread_across_shapes": {
+    "shoulder_width": 0.0304,
+    "hip_width": 0.0045,
+    "torso_length": 0.0122,
+    "upper_arm_len": 0.0206,
+    "forearm_len": 0.056,
+    "thigh_len": 0.0106,
+    "shank_len": 0.022,
+    "leg_length": 0.0116,
+    "head_to_shoulder": 0.0088,
+    "neck_width": 0.0449,
+    "shoulder_w_sil": 0.0202,
+    "chest_width": 0.0124,
+    "waist_width": null,
+    "hip_w_sil": 0.0089,
+    "thigh_width": 0.0376,
+    "calf_width": 0.1863,
+    "upper_arm_width": null
+  },
+  "unstable": [
+    "calf_width"
+  ],
+  "camera_distance_sensitivity": {
+    "shoulder_width": 0.0408,
+    "hip_width": 0.0343,
+    "torso_length": 0.0327,
+    "upper_arm_len": 0.0123,
+    "forearm_len": 0.0199,
+    "thigh_len": 0.0201,
+    "shank_len": 0.0524,
+    "leg_length": 0.035,
+    "head_to_shoulder": 0.0138,
+    "neck_width": 0.0296,
+    "shoulder_w_sil": 0.0671,
+    "chest_width": 0.026,
+    "hip_w_sil": 0.0232,
+    "thigh_width": 0.1124,
+    "calf_width": 0.3803
+  },
+  "render": {
+    "image_size": [
+      784,
+      1368
+    ],
+    "fill_frac": 0.9335,
+    "camera_distance_m": 3.0,
+    "projection": "perspective",
+    "camera_height": "몸 중앙",
+    "pose": "A자세 (상완 45.483도 / 전완 45.483도, 수직 기준)"
+  },
+  "betas_used": [
+    {
+      "beta0": -2.0
+    },
+    {
+      "beta0": 0.0
+    },
+    {
+      "beta0": 2.0
+    }
+  ],
+  "per_beta": {
+    "-2.0": {
+      "shoulder_width": 0.9286,
+      "hip_width": 0.76028,
+      "torso_length": 1.11153,
+      "upper_arm_len": 1.12641,
+      "forearm_len": 1.03042,
+      "thigh_len": 0.95445,
+      "shank_len": 1.08948,
+      "leg_length": 1.01527,
+      "head_to_shoulder": 1.01562,
+      "neck_width": 1.04113,
+      "shoulder_w_sil": 1.04332,
+      "chest_width": 1.01802,
+      "waist_width": null,
+      "hip_w_sil": null,
+      "thigh_width": 1.00536,
+      "calf_width": 0.8752,
+      "upper_arm_width": null
+    },
+    "0.0": {
+      "shoulder_width": 0.95731,
+      "hip_width": 0.75691,
+      "torso_length": 1.11961,
+      "upper_arm_len": 1.10349,
+      "forearm_len": 1.01394,
+      "thigh_len": 0.94443,
+      "shank_len": 1.07888,
+      "leg_length": 1.00523,
+      "head_to_shoulder": 1.01812,
+      "neck_width": 1.0741,
+      "shoulder_w_sil": 1.05887,
+      "chest_width": 1.00548,
+      "waist_width": null,
+      "hip_w_sil": 1.04808,
+      "thigh_width": 0.96806,
+      "calf_width": 1.06012,
+      "upper_arm_width": null
+    },
+    "2.0": {
+      "shoulder_width": null,
+      "hip_width": 0.7571,
+      "torso_length": 1.1252,
+      "upper_arm_len": 1.11016,
+      "forearm_len": 0.9741,
+      "thigh_len": 0.94605,
+      "shank_len": 1.10282,
+      "leg_length": 1.017,
+      "head_to_shoulder": 1.00917,
+      "neck_width": 1.08909,
+      "shoulder_w_sil": 1.06461,
+      "chest_width": 1.00995,
+      "waist_width": null,
+      "hip_w_sil": 1.03882,
+      "thigh_width": 1.00493,
+      "calf_width": 1.06126,
+      "upper_arm_width": null
+    }
+  },
+  "note": "BIAS[k] = 메시 실측 비율 / MediaPipe 판독 비율. step2 는 target = photo_ratio * BIAS 로 사용한다."
+}

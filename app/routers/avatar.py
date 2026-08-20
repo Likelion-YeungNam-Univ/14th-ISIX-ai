@@ -19,6 +19,7 @@
      멈춥니다. 반드시 워커 스레드/프로세스로 넘겨야 합니다.
 """
 
+import logging
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile, status
@@ -32,6 +33,9 @@ from app.models.avatar import (
     AvatarStatus,
     AvatarStatusResponse,
 )
+from app.services import avatar_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/avatar", tags=["avatar"])
 
@@ -43,43 +47,45 @@ _JOBS: dict[str, AvatarStatusResponse] = {}
 
 
 def _run_pipeline(avatar_id: str, photo_bytes: bytes, height: int, weight: int) -> None:
-    """백그라운드에서 파이프라인을 실행합니다.
+    """백그라운드 워커에서 파이프라인을 실행합니다.
 
-    TODO: 파이프라인 연결
-        step1_photo   -> 관절 33개 + 실루엣 -> 키 대비 비율
-        step2_shape   -> beta 최적화 -> 3D 메시
-        step3_scale   -> 키 보정 -> GLB 익스포트
-        step4_measure -> 12부위 치수 계측
-        step5_grid    -> body_grid.json 으로 구간 배정
-
-    동시 실행 수를 1~2개로 제한할 것. CPU 전용이라 요청이 겹치면
-    서로 코어를 뺏어 전부 느려집니다.
+    BackgroundTasks 는 동기 함수를 스레드풀에서 돌리므로 이벤트 루프를 막지
+    않습니다. 이 함수를 async 로 바꾸면 안 됩니다 — 그 순간 20초 동안
+    /health 를 포함한 모든 요청이 멈춥니다.
     """
-    del photo_bytes, height, weight  # 원본 사진 즉시 폐기
+    try:
+        out = avatar_service.generate(photo_bytes, height, weight, avatar_id=avatar_id)
+    except ClosrException as e:
+        logger.warning("[%s] 아바타 생성 실패: %s", avatar_id, e.error_code.name)
+        _JOBS[avatar_id] = AvatarStatusResponse(
+            avatar_id=avatar_id,
+            status=AvatarStatus.FAILED,
+            error_message=e.error_code.message,
+        )
+        return
+    except Exception:
+        logger.exception("[%s] 아바타 생성 중 예상치 못한 오류", avatar_id)
+        _JOBS[avatar_id] = AvatarStatusResponse(
+            avatar_id=avatar_id,
+            status=AvatarStatus.FAILED,
+            error_message=ErrorCode.INTERNAL_ERROR.message,
+        )
+        return
+    finally:
+        del photo_bytes  # 원본 사진 즉시 폐기
 
-    # 스텁 — 165cm / 55kg 여성 사진으로 실제 파이프라인을 돌려 얻은 값입니다.
     _JOBS[avatar_id] = AvatarStatusResponse(
         avatar_id=avatar_id,
         status=AvatarStatus.DONE,
         result=AvatarResult(
-            glb_url=f"https://cdn.closr.xxx/avatars/{avatar_id}.glb",
-            body_bucket="H1B1",
-            measurements={
-                "shoulder_width": 40.1,
-                "chest_circ": 87.2,
-                "waist_circ": 65.5,
-                "hip_circ": 94.9,
-                "neck_circ": 31.8,
-                "arm_circ": 25.9,
-                "thigh_circ": 56.3,
-                "back_length": 39.8,
-                "sleeve_length": 54.3,
-                "inseam": 74.0,
-                "total_length": 139.6,
-                "front_width": 30.6,
-            },
-            confidence=0.771,
-            warnings=[],
+            glb_url=out.glb_url,
+            body_bucket=out.body_bucket,
+            measurements=out.measurements,
+            confidence=out.confidence,
+            body_type=out.body_type,
+            body_type_label=out.body_type_label,
+            body_type_message=out.body_type_message,
+            warnings=out.warnings,
         ),
     )
 
