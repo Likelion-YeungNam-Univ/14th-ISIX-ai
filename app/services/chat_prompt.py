@@ -138,7 +138,29 @@ def _past_fittings_block(past: list[PastFitting], has_garment: bool) -> str:
     return "\n[지난번에 본 옷]\n" + "\n".join(lines) + closing
 
 
+# 어깨는 둘레가 아니라 너비입니다. 옷과 몸을 재는 방식이 달라 정상 착용에도
+# actual_ease 가 -8cm 안팎으로 나옵니다.
+SHOULDER = "shoulder_width"
+
+
 def _fit_report_block(context: FitContext) -> str:
+    """부위별 판정.
+
+    **부위마다 숫자를 몇 개 주느냐가 답변의 일관성을 정합니다.** 같은 부위에
+    "여유" 로 읽히는 값이 둘 있으면 모델이 턴마다 다른 쪽을 인용합니다. 같은
+    옷·같은 사이즈인데 가슴 여유를 9.5cm 라 했다가 다시 물으면 16.5cm 라고
+    답한 사례가 그것입니다 — 두 값 다 프롬프트에 "여유" 로 들어 있었습니다.
+
+    그래서 이름을 갈라 둡니다. **"여유" 는 화면이 표시하는 actual_ease 하나뿐**
+    이고, deviation 은 "기준보다" 로만 말합니다. 화면이 여유량으로 찍는 값이
+    actual_ease 라, 챗봇이 deviation 을 "여유" 라 부르면 화면과 어긋납니다.
+
+    ref_ease 는 넣지 않습니다. 세 번째 cm 값이 생기면 다시 갈릴 자리가 됩니다.
+    옷이 의도한 실루엣은 슬림·오버핏 같은 ``fit`` 으로 설명하면 충분합니다.
+
+    **어깨만 actual_ease 를 주지 않습니다.** 프롬프트에 있으면 언젠가 "어깨가
+    8cm 부족합니다" 로 나갑니다. 말하지 말라는 규칙보다 주지 않는 편이 낫습니다.
+    """
     if not context.fit_report:
         return ""
 
@@ -146,10 +168,16 @@ def _fit_report_block(context: FitContext) -> str:
     for part in context.fit_report:
         label = PART_LABELS.get(part.part, part.part)
         verdict = VERDICT_LABELS.get(part.verdict, part.verdict)
-        lines.append(
-            f"  · {label}: 편차 {part.deviation:+.1f}cm ({verdict}), "
-            f"실제 여유 {part.actual_ease:+.1f}cm / 기준 {part.ref_ease:+.1f}cm"
-        )
+        if part.part == SHOULDER:
+            lines.append(
+                f"  · {label}: {verdict} · 기준보다 {part.deviation:+.1f}cm"
+                " (어깨는 여유 수치가 없습니다. 재는 방식이 달라서입니다)"
+            )
+        else:
+            lines.append(
+                f"  · {label}: {verdict} · 여유 {part.actual_ease:+.1f}cm"
+                f" (화면에 뜬 값) · 기준보다 {part.deviation:+.1f}cm"
+            )
     return "\n".join(lines)
 
 
@@ -172,11 +200,24 @@ def _fit_context_block(context: FitContext) -> str:
         lines = ["\n[지금 보고 있는 옷]"]
 
     if context.garment_id:
-        size = (context.size or "").upper()
-        fit = f", {context.fit}" if context.fit else ""
-        lines.append(f"- 의류: {context.garment_id} {size}{fit}")
+        fit = f" ({context.fit})" if context.fit else ""
+        lines.append(f"- 의류: {context.garment_id}{fit}")
+        # **지금 보고 있는 사이즈를 따로 한 줄로 둡니다.** 한 줄에 의류와 붙여
+        # 두었더니 "지금 무슨 사이즈예요" 에 추천 사이즈로 답한 사례가 있었습니다.
+        # 가장 중요한 원칙이 "recommended_size 를 그대로 쓰라" 라서, 두 사이즈가
+        # 같은 줄에 있으면 모델이 그쪽으로 끌립니다.
+        lines.append(
+            f"- 지금 보고 있는 사이즈: {(context.size or '').upper()}"
+            " ← 사이즈를 물으면 이것을 답하십시오"
+        )
     if context.recommended_size:
-        lines.append(f"- 추천 사이즈: {context.recommended_size.upper()}")
+        recommended = context.recommended_size.upper()
+        # 같은지 다른지를 문장으로 붙입니다. 두 값을 나란히 두기만 하면 모델이
+        # 같을 때도 "M 을 권합니다" 로 답해, 사이즈를 모르는 것처럼 읽힙니다.
+        same = recommended == (context.size or "").upper()
+        note = "지금 보고 있는 것과 같습니다" if same \
+            else "지금 보고 있는 것과 다릅니다. 바꿔 권해도 됩니다"
+        lines.append(f"- 추천 사이즈: {recommended} ({note})")
 
     report = _fit_report_block(context)
     if report:
