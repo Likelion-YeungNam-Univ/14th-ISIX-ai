@@ -115,14 +115,43 @@ class TestFitContext:
         # 사이즈는 대문자로 말합니다. R2 파일명만 소문자입니다.
         prompt = build_system_prompt(fitting(size="s", recommended_size="m"))
 
-        assert "shirt_slim S" in prompt
+        assert "지금 보고 있는 사이즈: S" in prompt
         assert "추천 사이즈: M" in prompt
 
-    def test_report_uses_deviation_and_korean_parts(self):
+    def test_report_names_the_two_numbers_apart(self):
+        # 같은 부위에 "여유" 로 읽히는 값이 둘이면 모델이 턴마다 다른 쪽을
+        # 인용합니다. 가슴 여유를 9.5cm 라 했다가 16.5cm 라 답한 건이 그것입니다.
         prompt = build_system_prompt(fitting())
 
-        assert "어깨: 편차 -3.1cm (꽉 낌)" in prompt
-        assert "가슴: 편차 -2.0cm (적정)" in prompt
+        assert "가슴: 적정 · 여유 +6.0cm (화면에 뜬 값) · 기준보다 -2.0cm" in prompt
+
+    def test_shoulder_gets_no_ease_number(self):
+        # 어깨는 너비라 정상 착용에도 actual_ease 가 -8cm 안팎입니다. 프롬프트에
+        # 있으면 언젠가 "어깨가 11cm 부족합니다" 로 나갑니다.
+        prompt = build_system_prompt(fitting())
+
+        assert "어깨: 꽉 낌 · 기준보다 -3.1cm" in prompt
+        assert "-11.0cm" not in prompt
+
+    def test_ref_ease_is_not_in_the_prompt(self):
+        # 세 번째 cm 값이 생기면 다시 갈릴 자리가 됩니다.
+        prompt = build_system_prompt(fitting())
+
+        assert "-7.9" not in prompt
+        assert "8.0cm" not in prompt
+
+    def test_current_size_is_marked_as_the_answer(self):
+        # "지금 무슨 사이즈예요" 에 추천 사이즈로 답한 사례가 있었습니다.
+        prompt = build_system_prompt(fitting(size="l", recommended_size="m"))
+
+        assert "지금 보고 있는 사이즈: L ← 사이즈를 물으면 이것을 답하십시오" in prompt
+        assert "추천 사이즈: M (지금 보고 있는 것과 다릅니다" in prompt
+
+    def test_says_when_the_two_sizes_agree(self):
+        # 같은데도 "M 을 권합니다" 로 답하면 사이즈를 모르는 것처럼 읽힙니다.
+        prompt = build_system_prompt(fitting(size="m", recommended_size="m"))
+
+        assert "추천 사이즈: M (지금 보고 있는 것과 같습니다)" in prompt
 
     def test_unavailable_reason_is_framed_as_preview_only(self):
         # 미리보기가 없다는 것과 못 입는다는 것은 다릅니다.
@@ -157,9 +186,20 @@ class TestGarmentRules:
         prompt = build_system_prompt(fitting())
         assert "셔츠 상담에서 허리를 언급하지 마십시오" in prompt
 
-    def test_shoulder_uses_deviation_only(self):
-        # 어깨는 정상 착용에도 actual_ease 가 -8cm 안팎입니다.
-        assert "어깨는 어떤 경우에도" in build_system_prompt(fitting())
+    def test_shoulder_rule_matches_what_the_prompt_sends(self):
+        # 규칙이 "actual_ease 를 읽지 마라" 로 남아 있으면, 실제로는 주지도
+        # 않는 값을 가리키게 됩니다. 규칙과 데이터가 어긋난 채로 굳습니다.
+        prompt = build_system_prompt(fitting())
+        assert "어깨는 프롬프트에 `여유` 값이 아예 없습니다" in prompt
+
+    def test_forbids_calling_deviation_an_ease(self):
+        # 이 한 줄이 9.5 ↔ 16.5 를 막습니다.
+        prompt = build_system_prompt(fitting())
+        assert "\"여유\" 라는 말은 앞의 값에만 쓰십시오" in prompt
+
+    def test_answers_the_current_size_question(self):
+        prompt = build_system_prompt(fitting())
+        assert "\"지금 무슨 사이즈예요\" 에는 `size` 로 답하십시오" in prompt
 
     def test_too_small_is_preview_wording(self):
         # 8/14 개정 — 3건 중 1건은 옷이 오히려 큽니다.
