@@ -53,8 +53,31 @@ if not GARMENT_PROMPT:
     raise RuntimeError(f"{_PROMPT_PATH.name} 이 비어 있습니다")
 
 
-def _profile_block(profile: Optional[Profile]) -> str:
-    """이전 대화 요약. 첫 대화면 빈 문자열입니다."""
+def _topic(noun: str) -> str:
+    """주제 조사. 받침이 있으면 "은", 없으면 "는" 입니다.
+
+    한쪽으로 고정하면 부위 넷 중 하나는 반드시 틀립니다 — 가슴은 · 어깨는.
+    """
+    if not noun:
+        return "는"
+    last = noun[-1]
+    if not ("가" <= last <= "힣"):
+        return "는"
+    return "은" if (ord(last) - 0xAC00) % 28 else "는"
+
+
+def _profile_block(profile: Optional[Profile], judged: set[str]) -> str:
+    """이전 대화 요약. 첫 대화면 빈 문자열입니다.
+
+    ``judged`` 는 이번 옷에서 실제로 판정한 부위입니다. **거기에 없는 부위를
+    사용자가 신경 쓴다고 적어 두면 모델이 그 부위의 판정을 지어냅니다.**
+    어깨가 신경 쓰인다고 말한 사용자가 슬랙스를 고르면 판정에는 허리만 있는데
+    "어깨는 잘 맞습니다" 를 덧붙이는 식입니다.
+
+    그래서 판정에 없는 부위는 말하지 말라고 못박습니다. 항목 자체를 지우지는
+    않습니다 — 용도나 선호 핏은 그대로 쓸 수 있고, 부위도 사용자가 직접 물으면
+    답해야 합니다.
+    """
     if profile is None:
         return ""
 
@@ -72,15 +95,31 @@ def _profile_block(profile: Optional[Profile]) -> str:
     if not lines:
         return ""
 
+    unjudged = [PART_LABELS.get(p, p) for p in profile.신경쓰는부위 if p not in judged]
+    if unjudged:
+        listed = " · ".join(unjudged)
+        warning = (
+            f"\n{listed}{_topic(listed)} 이번 옷의 판정에 없습니다. "
+            "그 부위가 맞는지 여부를 말하지 마십시오."
+        )
+    else:
+        warning = ""
+
     return (
         "\n[지난 대화에서 알게 된 것]\n"
         + "\n".join(lines)
+        + warning
         + "\n이 중 하나만 골라 한 번 인용하세요. 두 개를 다 인용하면 말투가 부자연스러워집니다."
     )
 
 
-def _past_fittings_block(past: list[PastFitting]) -> str:
-    """지난 피팅. 비교 발화의 근거입니다."""
+def _past_fittings_block(past: list[PastFitting], has_garment: bool) -> str:
+    """지난 피팅. 비교 발화의 근거입니다.
+
+    **비교할 대상이 있을 때만 비교를 지시합니다.** 옷을 고르지 않은 상태에서
+    "지금 옷과 비교하세요" 를 남겨 두면 모델이 지난 옷을 지금 옷처럼 말합니다.
+    지시가 이행 불가능하면 모델은 지시를 버리는 대신 전제를 만들어 냅니다.
+    """
     if not past:
         return ""
 
@@ -90,11 +129,13 @@ def _past_fittings_block(past: list[PastFitting]) -> str:
         state = f"{tight} 꽉 낌" if tight else "전 부위 적정"
         lines.append(f"- {fitting.garment_id} {fitting.size.upper()}: {state}")
 
-    return (
-        "\n[지난번에 본 옷]\n"
-        + "\n".join(lines)
-        + "\n지금 옷과 수치 차이가 1cm 이상일 때만 비교하세요."
+    closing = (
+        "\n지금 옷과 수치 차이가 1cm 이상일 때만 비교하세요."
+        if has_garment
+        else "\n지금 고른 옷이 없습니다. 먼저 꺼내 말하지 마시고, "
+             "사용자가 그 옷을 물었을 때만 답하세요."
     )
+    return "\n[지난번에 본 옷]\n" + "\n".join(lines) + closing
 
 
 def _fit_report_block(context: FitContext) -> str:
@@ -114,7 +155,21 @@ def _fit_report_block(context: FitContext) -> str:
 
 def _fit_context_block(context: FitContext) -> str:
     """치수와 판정. 답변의 본체입니다."""
-    lines = ["\n[지금 보고 있는 옷]"]
+    # 옷이 없는데 "[지금 보고 있는 옷]" 을 붙이면 모델이 있다고 믿고 설명합니다.
+    # 그러면 지난 피팅이나 예시의 옷을 현재 옷처럼 말하게 됩니다.
+    if not context.garment_id:
+        # 치수가 있는데도 "아바타를 만들어 주세요" 라고 답한 사례가 있었습니다.
+        # 옷이 없는 것과 아바타가 없는 것을 섞은 것이라 그 둘을 갈라 둡니다.
+        lines = ["\n[사용자 치수]",
+                 "- 아직 옷을 고르지 않았습니다. 옷에 대한 판정을 말하지 마십시오.",
+                 "- 치수는 아래에 이미 있습니다. 아바타를 만들라거나 측정이 필요하다고"
+                 " 말하지 마십시오.",
+                 # "어떤 옷인지 말씀해 주시면" 처럼 사용자에게 옷을 설명하라고
+                 # 답한 사례가 있었습니다. 옷은 화면에서 고르는 것입니다.
+                 "- \"화면에서 옷을 고르시면 사이즈를 봐 드리겠습니다\" 처럼"
+                 " 안내하세요. 옷 이름을 말해 달라고 하지 마십시오."]
+    else:
+        lines = ["\n[지금 보고 있는 옷]"]
 
     if context.garment_id:
         size = (context.size or "").upper()
@@ -167,8 +222,10 @@ def build_system_prompt(request: ChatRequest) -> str:
         blocks.append("\n[지금 상태]\nmode 는 onboarding 입니다. 치수와 판정 결과가 없습니다.")
         return "\n".join(blocks)
 
-    blocks.append(_profile_block(context.profile))
+    judged = {part.part for part in context.fit_report}
+    blocks.append(_profile_block(context.profile, judged))
     blocks.append(_fit_context_block(context))
-    blocks.append(_past_fittings_block(context.past_fittings))
+    blocks.append(_past_fittings_block(
+        context.past_fittings, has_garment=bool(context.garment_id)))
 
     return "\n".join(block for block in blocks if block)

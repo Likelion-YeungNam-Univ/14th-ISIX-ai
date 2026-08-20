@@ -4,7 +4,7 @@
 **금지 규칙이 빠지지 않는지**, **부위·사이즈 표기가 규칙대로인지**입니다.
 """
 
-from app.models.chat import ChatRequest
+from app.models.chat import ChatRequest, FitContext
 from app.services.chat_prompt import build_system_prompt
 
 FIT_REPORT = [
@@ -174,3 +174,140 @@ class TestGarmentRules:
     def test_forbids_list_markup_in_answer(self):
         # 음성으로 읽히므로 목록 기호를 읽을 수 없습니다.
         assert "목록·표·머리글 기호를 쓰지 마십시오" in build_system_prompt(fitting())
+
+
+class TestNoGarmentSelected:
+    """옷을 고르지 않은 상태.
+
+    피팅룸에 들어왔지만 아직 옷을 안 고른 화면입니다. 이 상태에서 챗봇이
+    **없는 옷을 설명하거나 지난 옷과 비교하던 문제**를 막습니다.
+
+    원인은 프롬프트가 이행 불가능한 지시를 남겨 둔 것이었습니다. 머리말이
+    "[지금 보고 있는 옷]" 인데 옷 정보가 없고, 지난 피팅 블록은 "지금 옷과
+    비교하세요" 라고 했습니다. 지시를 못 지키게 되면 모델은 지시를 버리는
+    대신 전제를 만들어 냅니다 — 지난 옷을 지금 옷처럼 말했습니다.
+    """
+
+    def _request(self, past=True):
+        return ChatRequest(
+            mode="fitting",
+            message="이거 어때요?",
+            fit_context=FitContext(
+                measurements={"shoulder_width": 45.5, "chest_circ": 92.0},
+                garment_id=None,
+                profile={"용도": "출근"},
+                past_fittings=[{"garment_id": "shirt_slim", "size": "m",
+                                "wearable": False,
+                                "tight_parts": ["shoulder_width"]}] if past else [],
+            ),
+        )
+
+    def test_does_not_claim_a_garment_is_being_viewed(self):
+        prompt = build_system_prompt(self._request())
+
+        assert "[지금 보고 있는 옷]" not in prompt
+        assert "[사용자 치수]" in prompt
+
+    def test_tells_the_model_no_garment_is_chosen(self):
+        prompt = build_system_prompt(self._request())
+
+        assert "아직 옷을 고르지 않았습니다" in prompt
+        assert "옷에 대한 판정을 말하지 마십시오" in prompt
+
+    def test_points_at_the_screen_not_at_the_user(self):
+        # "어떤 옷인지 말씀해 주시면" 처럼 답한 사례가 있었습니다. 옷은 화면에서
+        # 고르는 것이라, 사용자가 이름을 말할 방법이 없습니다.
+        prompt = build_system_prompt(self._request())
+
+        assert "화면에서 옷을 고르시면" in prompt
+        assert "옷 이름을 말해 달라고 하지 마십시오" in prompt
+
+    def test_does_not_ask_the_user_to_create_an_avatar(self):
+        # 치수가 있는데 "아바타를 만들어 주세요" 라고 답한 사례가 있었습니다.
+        # 옷이 없는 것과 아바타가 없는 것은 다른 상태입니다.
+        prompt = build_system_prompt(self._request())
+
+        assert "아바타를 만들라거나 측정이 필요하다고 말하지 마십시오" in prompt
+
+    def test_does_not_ask_to_compare_with_a_garment_that_is_not_there(self):
+        # "지금 옷과 비교하세요" 가 남아 있으면 모델이 비교 대상을 만들어 냅니다.
+        prompt = build_system_prompt(self._request())
+
+        assert "지금 옷과 수치 차이" not in prompt
+        assert "지금 고른 옷이 없습니다" in prompt
+
+    def test_still_sends_measurements(self):
+        # 치수는 남아야 합니다. 사용자가 "제 어깨 몇이에요?" 를 물을 수 있습니다.
+        prompt = build_system_prompt(self._request())
+
+        assert "어깨 45.5cm" in prompt
+
+    def test_garment_selected_keeps_the_original_wording(self):
+        # 옷이 있을 때는 기존 동작이 그대로여야 합니다.
+        request = ChatRequest(
+            mode="fitting", message="이거 어때요?",
+            fit_context=FitContext(
+                measurements={"chest_circ": 92.0},
+                garment_id="shirt_over", size="m", fit="오버핏",
+                fit_report=[{"part": "chest_circ", "actual_ease": 32.0,
+                             "ref_ease": 30.0, "deviation": 2.0, "verdict": "good"}],
+                past_fittings=[{"garment_id": "shirt_slim", "size": "m",
+                                "wearable": False, "tight_parts": []}],
+            ),
+        )
+
+        prompt = build_system_prompt(request)
+
+        assert "[지금 보고 있는 옷]" in prompt
+        assert "지금 옷과 수치 차이가 1cm 이상일 때만 비교하세요" in prompt
+        assert "아직 옷을 고르지 않았습니다" not in prompt
+
+
+class TestProfilePartNotJudged:
+    """profile 의 부위가 이번 옷 판정에 없는 경우.
+
+    QA 에서 나온 "없는 부위를 맞다고 단정" 문제입니다. 어깨가 신경 쓰인다고
+    말한 사용자가 슬랙스를 고르면 판정에는 허리만 있는데, 모델이 profile 을
+    보고 "어깨는 잘 맞습니다" 를 덧붙였습니다.
+
+    시연 대본이 "어깨가 늘 끼어서" 로 시작하므로 하의로 넘어가는 순간 걸립니다.
+    """
+
+    def _request(self, parts, report_part):
+        return ChatRequest(
+            mode="fitting", message="이거 어때요?",
+            fit_context=FitContext(
+                measurements={"waist_circ": 72.0},
+                garment_id="pants_slacks", size="m", fit="레귤러",
+                fit_report=[{"part": report_part, "actual_ease": 8.1,
+                             "ref_ease": 5.2, "deviation": 2.9, "verdict": "good"}],
+                profile={"용도": "출근", "신경쓰는부위": parts},
+            ),
+        )
+
+    def test_warns_when_the_part_is_not_judged(self):
+        prompt = build_system_prompt(self._request(["shoulder_width"], "waist_circ"))
+
+        assert "어깨는 이번 옷의 판정에 없습니다" in prompt
+        assert "맞는지 여부를 말하지 마십시오" in prompt
+
+    def test_no_warning_when_the_part_is_judged(self):
+        # 판정에 있는 부위면 경고가 붙지 않아야 합니다. 항상 붙으면 읽히지 않습니다.
+        prompt = build_system_prompt(self._request(["waist_circ"], "waist_circ"))
+
+        assert "판정에 없습니다" not in prompt
+
+    def test_keeps_the_profile_itself(self):
+        # 항목을 지우지는 않습니다. 용도는 그대로 쓸 수 있습니다.
+        prompt = build_system_prompt(self._request(["shoulder_width"], "waist_circ"))
+
+        assert "용도: 출근" in prompt
+        assert "신경 쓰는 부위: 어깨" in prompt
+
+    def test_attaches_the_right_particle(self):
+        # 한쪽으로 고정하면 부위 넷 중 하나는 반드시 틀립니다.
+        assert "가슴은 이번 옷의 판정에 없습니다" in build_system_prompt(
+            self._request(["chest_circ"], "waist_circ"))
+        assert "어깨는 이번 옷의 판정에 없습니다" in build_system_prompt(
+            self._request(["shoulder_width"], "waist_circ"))
+
