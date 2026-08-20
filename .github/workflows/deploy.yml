@@ -3,10 +3,11 @@ name: Deploy FastAPI to AWS EC2
 on:
   push:
     branches:
-      - develop
+      - main
   pull_request:
     branches:
       - develop
+      - main
 
 permissions:
   contents: read
@@ -56,8 +57,8 @@ jobs:
             # pull 대신 reset 을 씁니다. 서버에서 급하게 파일을 고친 적이 있으면
             # pull 이 충돌로 멈추고, 그때 배포가 절반만 된 상태로 남습니다.
             # .env 와 assets/ 는 추적 대상이 아니라 reset 으로 지워지지 않습니다.
-            git fetch origin develop
-            git reset --hard origin/develop
+            git fetch origin main
+            git reset --hard origin/main
             echo "배포 커밋: $(git log -1 --oneline)"
 
             # requirements.txt 가 바뀐 배포에서만 설치합니다.
